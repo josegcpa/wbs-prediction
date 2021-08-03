@@ -1,0 +1,26 @@
+model_params:
+  name: 'BetaVAE'
+  in_channels: 3
+  latent_dim: 512
+  img_size: 128
+  loss_type: 'H'
+  beta: 5. #10.
+
+exp_params:
+  dataset: wbc
+  data_path: "datasets/wbc.h5"
+  data_path_val: "datasets/wbc_val.h5"
+  img_size: 128
+  batch_size: 144 # Better to have a square number
+  LR: 0.001
+  weight_decay: 0.
+  scheduler_gamma: 0.95
+
+trainer_params:
+  gpus: 1
+  max_epochs: 100
+
+logging_params:
+  save_dir: "logs/"
+  name: "BetaVAE_H_WBC"
+  manual_seed: 1265

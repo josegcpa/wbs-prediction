@@ -1,0 +1,81 @@
+import numpy as np
+import openslide
+from multiprocessing import Queue,Process
+
+def image_generator(quality_csv_path,slide_path,extra_padding=128):
+    OS = openslide.OpenSlide(slide_path)
+    with open(quality_csv_path) as o:
+        lines = [x.strip() for x in o.readlines() if 'OUT,' in x]
+        positives = []
+        negatives = []
+        for line in lines:
+            data = line.split(',')
+            if float(data[-1]) > 0.4:
+                positives.append([int(data[1]),int(data[2])])
+            else:
+                negatives.append([int(data[1]),int(data[2])])
+    for x,y in positives:
+        x = x - extra_padding
+        y = y - extra_padding
+        x = np.maximum(0,x)
+        y = np.maximum(0,y)
+        if x + 512 + (2*extra_padding) > OS.dimensions[0]:
+            x = OS.dimensions[0] - 512 - (extra_padding*2)
+        if y + 512 + (2*extra_padding) > OS.dimensions[1]:
+            y = OS.dimensions[1] - 512 - (extra_padding*2)
+        image = OS.read_region(
+            (x,y),0,
+            (512+(extra_padding*2),512+(extra_padding*2)))
+        image = np.array(image)[:,:,:3]
+        yield image,[x,y]
+
+def image_generator_slide(slide_path,
+                          height=512,width=512):
+    OS = openslide.OpenSlide(slide_path)
+    dim = OS.dimensions
+    for x in range(0,dim[0],height):
+        for y in range(0,dim[1],width):
+            im = OS.read_region((x,y),0,(height,width))
+            im = np.array(im)
+            im = im[:,:,:3]
+            yield im,'{},{}'.format(x,y)
+
+class ImageGeneratorWithQueue:
+    def __init__(self,slide_path,csv_path,
+                 extra_padding=128,
+                 maxsize=1):
+        self.maxsize = maxsize
+        self.csv_path = csv_path
+        self.slide_path = slide_path
+        self.extra_padding = extra_padding
+
+        self.q = Queue(self.maxsize)
+        self.p = Process(
+            target=self.image_generator_w_q,
+            args=(self.q,csv_path,slide_path,extra_padding))
+
+    def image_generator_w_q(self,q,csv_path,slide_path,extra_padding):
+        if csv_path != None:
+            im_gen = image_generator(
+                quality_csv_path=csv_path,
+                slide_path=slide_path,
+                extra_padding=extra_padding
+            )
+        else:
+            im_gen = image_generator_slide(slide_path)
+        for element in im_gen:
+            q.put(element)
+        q.put(None)
+
+    def start(self):
+        self.daemon = True
+        self.p.start()
+
+    def generate(self):
+        while True:
+            item = self.q.get()
+            if item is not None:
+                yield item
+            else:
+                self.p.join()
+                break

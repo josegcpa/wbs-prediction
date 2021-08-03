@@ -1,0 +1,14 @@
+small_subset
+.snakemake
+scripts/python/__pycache__
+logs
+pipeline-addenbrookes.sh
+pipeline-no-cluster.sh
+pipeline.sh  run_all.sh
+run_slide.sh
+run_test.sh
+run_all.sh
+submit_all_adden.sh
+submit_all_no_check.sh
+submit_all_no_gpu.sh
+submit_all.sh

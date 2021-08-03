@@ -1,0 +1,109 @@
+import sys
+import os
+
+slide_path = config['slide_path']
+output_path = config['output_path']
+slide_id = slide_path.split('/')[-1].split('.')[0]
+
+for folder in ['_datasets','_aggregates','_quality_control',
+               '_segmented_wbc','_segmented_rbc',
+               '_aggregates_wbc','_aggregates_rbc']:
+    try:
+        os.makedirs(os.path.join(output_path,folder))
+    except:
+        pass
+
+localrules: all, quality_control,segment_characterise_wbc
+
+rule all:
+    input:
+        "{}/_aggregates_rbc/{}.h5".format(output_path,slide_id),
+        "{}/_aggregates_wbc/{}.h5".format(output_path,slide_id),
+        #"{}/_segmented_wbc/{}.h5".format(output_path,slide_id)
+
+rule quality_control:
+    input:
+        slide_path=slide_path
+    output:
+        qc_out="{}/_quality_control/{}".format(output_path,slide_id)
+    message:
+        "Running slide through QC network."
+    shell:
+        """
+        sh scripts/bash/quality_checking.sh\
+         {input.slide_path} > {output.qc_out}
+        """
+
+rule segment_characterise_rbc:
+    input:
+        slide_path=slide_path,
+        qc_out="{}/_quality_control/{}".format(output_path,slide_id),
+    output:
+        "{}/_segmented_rbc/{}.h5".format(output_path,slide_id)
+    message:
+        "Segmenting RBC."
+    params:
+        log_id="RBC_SEGMENTATION_{}".format(slide_id)
+    shell:
+        """
+        python3 scripts/python/segment_slide_rbc.py \
+            --csv_path {input.qc_out} \
+            --slide_path {input.slide_path} \
+            --output_path {output} \
+            --n_processes_analysis 8 \
+            --n_processes_data 2
+        """
+
+rule segment_characterise_wbc:
+    input:
+        slide_path=slide_path,
+        qc_out="{}/_quality_control/{}".format(output_path,slide_id),
+    output:
+        "{}/_segmented_wbc/{}.h5".format(output_path,slide_id)
+    message:
+        "Segmenting WBC."
+    shell:
+        """
+        python3 scripts/python/segment_slide_wbc.py \
+            --csv_path {input.qc_out} \
+            --slide_path {input.slide_path} \
+            --checkpoint_path /nfs/research1/gerstung/josegcpa/projects/01IMAGE/u-net/checkpoints/segmentation_dataset_1.0/my_u-net.ckpt-59999 \
+            --depth 1.0 \
+            --output_path {output} \
+            --n_processes_data 8
+        """
+
+rule aggregate_wbc:
+    input:
+        segmentation="{}/_segmented_wbc/{}.h5".format(output_path,slide_id),
+        slide=slide_path
+    output:
+        "{}/_aggregates_wbc/{}.h5".format(output_path,slide_id),
+    message:
+        "Aggregating WBC."
+    params:
+        log_id="WBC_AGGREGATION_{}".format(slide_id)
+    shell:
+        """
+        python3 scripts/python/aggregate_hdf5_with_nucleus.py \
+            --slide_path {input.slide} \
+            --hdf5_path {input.segmentation}\
+            --output_path {output}
+        """
+
+rule aggregate_rbc:
+    input:
+        "{}/_segmented_rbc/{}.h5".format(output_path,slide_id)
+    output:
+        "{}/_aggregates_rbc/{}.h5".format(output_path,slide_id),
+    message:
+        "Aggregating RBC."
+    params:
+        log_id="RBC_AGGREGATION_{}".format(slide_id)
+    shell:
+        """
+        python3 scripts/python/aggregate_hdf5.py \
+            --hdf5_path {input}\
+            --output_path {output}
+        """
+
