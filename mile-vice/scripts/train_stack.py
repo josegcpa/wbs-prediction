@@ -189,7 +189,7 @@ if __name__ == "__main__":
             if S > args.number_of_steps:
                 break
             time_a = time.time()
-            loss = torch.zeros([1]).to(dev)
+            loss = torch.zeros([len(all_lists['criterions'])]).to(dev)
             for i in range(len(all_lists['criterions'])):
                 criterion = all_lists['criterions'][i]
                 queued_dataset = all_lists['queued_datasets'][i]
@@ -204,7 +204,11 @@ if __name__ == "__main__":
                 else:
                     od = None
                 output_prob = stacked_network([d,od],i)
-                loss += criterion(output_prob,truth)
+                loss[i] = criterion(output_prob,truth)
+            if len(all_lists['criterions']) > 1:
+                loss = torch.Tensor(np.random.dirichlet(
+                    [10. for _ in range(len(all_lists['criterions']))])) * loss
+            loss = loss.sum()
             loss.backward()
             optimizer.step()
             times.append(time.time() - time_a)
