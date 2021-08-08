@@ -58,7 +58,7 @@ def refine_prediction(mask):
             mask_binary_holes = np.zeros_like(labels_im)
             mask_binary_holes[labels_im == i] = 1
             S = mask_binary_holes.sum()
-            if (S > 1000) and (S < 10000):
+            if (S > 10000) and (S < 1000000):
                 mask_convolved = convolve_n(
                     mask_binary_holes.astype(np.float32),
                     Filter,3,thr=0.5)

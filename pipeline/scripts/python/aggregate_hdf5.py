@@ -34,8 +34,11 @@ fitted_model = xgboost.XGBClassifier(n_estimators=50,eval_metric="logloss")
 with open("scripts/python/rbc_scaler_params","rb") as o:
     sc_params = pickle.load(o)
 
+
+standardized_scaler.n_features_in_ = len(sc_params['mean'])
 standardized_scaler.mean_ = sc_params['mean']
 standardized_scaler.scale_ = sc_params['std']
+standardized_scaler.var_ = sc_params['std']**2
 fitted_model.load_model("scripts/python/rbc_xgb_model")
 
 F = h5py.File(args.hdf5_path,mode='r')

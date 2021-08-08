@@ -1,5 +1,6 @@
 import numpy as np
 from skimage.feature import greycoprops
+from skimage.feature import greycomatrix
 
 def quantize_image(image):
     q_image = np.uint8(np.mean(image,axis=2) * 32)
@@ -10,8 +11,8 @@ def glcm(image,x,y):
     gray_matrix = np.zeros([32,32])
     avail_coord_list = [(x1,y1) for x1,y1 in zip(x,y)]
     for x1,y1 in zip(x,y):
-        coord_list = [(x1+i,y1) for i in range(-5,4) if i != 0]
-        coord_list = [(x1,y1+i) for i in range(-5,4) if i != 0]
+        coord_list = [(x1+i,y1) for i in range(-4,5) if i != 0]
+        coord_list.extend([(x1,y1+i) for i in range(-4,5) if i != 0])
         coord_list = [c for c in coord_list if c in avail_coord_list]
         for c in coord_list:
             a,b = image[x1,y1],image[c[0],c[1]]
@@ -20,13 +21,21 @@ def glcm(image,x,y):
     return gray_matrix
 
 def texture_features(image,x,y):
-    gray_matrix = np.expand_dims(
-        np.expand_dims(glcm(image,x,y),-1),-1)
-    contrast = greycoprops(gray_matrix,'contrast')
-    energy = greycoprops(gray_matrix,'energy')
-    homogeneity = greycoprops(gray_matrix,'homogeneity')
-    correlation = greycoprops(gray_matrix,'correlation')
-
+    #gray_matrix = np.expand_dims(
+    #    np.expand_dims(glcm(image,x,y),-1),-1)
+    image = image.copy()
+    coords = np.stack([x,y],1)
+    image[~coords] = 32
+    gray_matrix = greycomatrix(
+        image,distances=[1,2,3,4],angles=[0,np.pi/2,np.pi,-np.pi/2],
+        symmetric=True,levels=33
+    )
+    gray_matrix = gray_matrix[:32,:,:,:]
+    gray_matrix = gray_matrix[:,:32,:,:]
+    contrast = greycoprops(gray_matrix,'contrast').mean()
+    energy = greycoprops(gray_matrix,'energy').mean()
+    homogeneity = greycoprops(gray_matrix,'homogeneity').mean()
+    correlation = greycoprops(gray_matrix,'correlation').mean()
     return [np.squeeze(contrast),np.squeeze(energy),
             np.squeeze(homogeneity),np.squeeze(correlation)]
 

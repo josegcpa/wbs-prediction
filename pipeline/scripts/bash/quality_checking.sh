@@ -11,7 +11,7 @@ python3 $NET_PATH\
   $SLIDE_PATH\
   0.0001\
   100000\
-  16\
+  32\
   predict\
   N\
   False\

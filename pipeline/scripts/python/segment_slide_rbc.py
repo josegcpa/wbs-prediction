@@ -7,7 +7,6 @@ import time
 from PIL import Image
 from multiprocessing import Pool
 import h5py
-import xgboost
 import pickle
 
 from mask_rbc import wraper as mask_rbc

@@ -19,7 +19,6 @@ rule all:
     input:
         "{}/_aggregates_rbc/{}.h5".format(output_path,slide_id),
         "{}/_aggregates_wbc/{}.h5".format(output_path,slide_id),
-        #"{}/_segmented_wbc/{}.h5".format(output_path,slide_id)
 
 rule quality_control:
     input:
@@ -70,7 +69,23 @@ rule segment_characterise_wbc:
             --checkpoint_path /nfs/research1/gerstung/josegcpa/projects/01IMAGE/u-net/checkpoints/segmentation_dataset_1.0/my_u-net.ckpt-59999 \
             --depth 1.0 \
             --output_path {output} \
-            --n_processes_data 8
+            --n_processes_data 16
+        """
+
+rule aggregate_rbc:
+    input:
+        "{}/_segmented_rbc/{}.h5".format(output_path,slide_id)
+    output:
+        "{}/_aggregates_rbc/{}.h5".format(output_path,slide_id),
+    message:
+        "Aggregating RBC."
+    params:
+        log_id="RBC_AGGREGATION_{}".format(slide_id)
+    shell:
+        """
+        python3 scripts/python/aggregate_hdf5.py \
+            --hdf5_path {input}\
+            --output_path {output}
         """
 
 rule aggregate_wbc:
@@ -90,20 +105,3 @@ rule aggregate_wbc:
             --hdf5_path {input.segmentation}\
             --output_path {output}
         """
-
-rule aggregate_rbc:
-    input:
-        "{}/_segmented_rbc/{}.h5".format(output_path,slide_id)
-    output:
-        "{}/_aggregates_rbc/{}.h5".format(output_path,slide_id),
-    message:
-        "Aggregating RBC."
-    params:
-        log_id="RBC_AGGREGATION_{}".format(slide_id)
-    shell:
-        """
-        python3 scripts/python/aggregate_hdf5.py \
-            --hdf5_path {input}\
-            --output_path {output}
-        """
-

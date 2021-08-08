@@ -4,6 +4,7 @@ Set of functions described in https://hal.archives-ouvertes.fr/hal-00446037/docu
 
 from math import pi
 import numpy as np
+import time
 from scipy.stats import moment
 import cv2
 
@@ -592,10 +593,8 @@ def wrapper(x,y,cnt):
 
     if len(cdf) >= 20:
         out['cdf_fc'] = fourier_complexity(cdf)
-        out['cuf_fc'] = fourier_complexity(cuf)
     else:
         out['cdf_fc'] = np.nan
-        out['cuf_fc'] = np.nan
 
     return out
 
@@ -606,8 +605,7 @@ def wrapper_separate(x,y,cnt):
     hull = convex_hull(np.concatenate(cnt,axis=0))
     cxx,cyy,cxy = correlation(x,y,gx,gy)
     out = {}
-    cdf = centroid_distance_function(x_bound,y_bound,gx,gy)
-    cuf = curvature(x_bound,y_bound)[1]
+
     out['eccentricity'] = eccentricity(cxx,cyy,cxy)
     out['area_separate'] = area_separate(cnt)
     out['perimeter_separate'] = perimeter_separate(cnt)

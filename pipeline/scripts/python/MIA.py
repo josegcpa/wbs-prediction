@@ -14,7 +14,7 @@ MIA_FEATURES = [
     "invariant_region_moments_2","invariant_region_moments_3",
     "invariant_region_moments_4","invariant_region_moments_5",
     "invariant_region_moments_6",
-    "cdf_fc","cuf_fc",
+    "cdf_fc",
     "peak_profile_major_fc","peak_profile_major_std",
     "peak_profile_major_max","peak_profile_major_min",
     "peak_profile_minor_fc","peak_profile_minor_std",

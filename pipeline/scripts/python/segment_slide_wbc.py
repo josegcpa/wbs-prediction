@@ -43,32 +43,43 @@ def draw_hulls(image):
         output = image
     return output,cnt
 
-def refine_prediction_characterise(image,mask):
+def characterise_cell(image_labels_im_i):
     F_size = 9
     Filter = np.ones([F_size,F_size]) / (F_size**2)
-    image = image[0,:,:,:]
-    mask = mask[0,:,:,0]
+    image,labels_im,i = image_labels_im_i
+    x,y = np.where(labels_im == i)
+    x = x - x.min() + 16
+    y = y - y.min() + 16
+    features = None
+    if x.max() < 150 and y.max() < 150:
+        S = len(x)
+        if (S > 1000) and (S < 8000):
+            mask_binary_holes = np.zeros([150,150])
+            mask_binary_holes[[x,y]] = 1
+            mask_convolved = convolve_n(
+                mask_binary_holes.astype(np.float32),
+                Filter,3,thr=0.5)
+            mask_hulls,cnt = draw_hulls(mask_convolved)
+            mask_hulls = binary_fill_holes(mask_hulls)
+
+            features = MIA.wrapper_single_image(image,mask_hulls,cnt)
+    return features
+
+
+def refine_prediction_characterise(image,mask):
     mask_binary = apply_hysteresis_threshold(mask,0.45,0.5)
     mask_binary_holes = binary_fill_holes(mask_binary)
 
     num_labels, labels_im = cv2.connectedComponents(
         np.uint8(mask_binary_holes))
-    for i in range(1,num_labels):
-        try:
-            mask_binary_holes = np.zeros_like(labels_im)
-            mask_binary_holes[labels_im == i] = 1
-            S = mask_binary_holes.sum()
-            if (S > 1000) and (S < 8000):
-                mask_convolved = convolve_n(
-                    mask_binary_holes.astype(np.float32),
-                    Filter,3,thr=0.5)
-                mask_hulls,cnt = draw_hulls(mask_convolved)
-                mask_hulls = binary_fill_holes(mask_hulls)
 
-                features = MIA.wrapper_single_image(image,mask_hulls,cnt)
+    for i in range(1,num_labels):
+        #try:
+            features = characterise_cell([image,labels_im,i])
+            if features is not None:
                 yield features
-        except:
-            pass
+        #except:
+        #    pass
 
 parser = argparse.ArgumentParser(
       prog = 'u-net.py',
@@ -107,24 +118,24 @@ parser.add_argument('--n_processes_data',dest='n_processes_data',
 
 args = parser.parse_args()
 
+h,w,extra = 512,512,128
+n_i = 2
 inputs = tf.placeholder(tf.uint8,
-                        [None,512+256,512+256,3],
+                        [None,h+extra,w+extra,3],
                         name='Input_Tensor')
 inputs = tf.image.convert_image_dtype(inputs,tf.float32)
 
-flipped_inputs = tf.image.flip_left_right(inputs)
-inputs = tf.concat(
-    [inputs,
-     tf.image.rot90(inputs,1),
-     tf.image.rot90(inputs,2),
-     tf.image.rot90(inputs,3),
-     #flipped_inputs,
-     #tf.image.rot90(flipped_inputs,1),
-     #tf.image.rot90(flipped_inputs,2),
-     #tf.image.rot90(flipped_inputs,3)
-     ],
-  axis=0
-)
+#flipped_inputs = tf.image.flip_left_right(inputs)
+inputs_ = []
+for i in range(n_i):
+    inputs_curr = inputs[i,:,:,:]
+    inputs_.extend([
+        inputs_curr,
+        tf.image.rot90(inputs_curr,1),
+        tf.image.rot90(inputs_curr,2),
+        tf.image.rot90(inputs_curr,3)
+    ])
+inputs = tf.stack(inputs_,axis=0)
 
 unet = unet_utilities.u_net(
   inputs=inputs,
@@ -137,27 +148,30 @@ prediction_network = tf.expand_dims(
   tf.nn.softmax(unet,axis=-1)[:,:,:,1],
   axis=-1)
 
-flipped_prediction = tf.image.flip_left_right(
-  prediction_network[4:,:,:,:])
-prediction_network = prediction_network[:4,:,:,:]
+#flipped_prediction = tf.image.flip_left_right(
+#  prediction_network[4:,:,:,:])
+#prediction_network = prediction_network[:4,:,:,:]
 
-pred_list = [
-  prediction_network[0,:,:,:],
-  tf.image.rot90(prediction_network[1,:,:,:],-1),
-  tf.image.rot90(prediction_network[2,:,:,:],-2),
-  tf.image.rot90(prediction_network[3,:,:,:],-3),
-  #flipped_prediction[0,:,:,:],
-  #tf.image.rot90(flipped_prediction[1,:,:,:],1),
-  #tf.image.rot90(flipped_prediction[2,:,:,:],-2),
-  #tf.image.rot90(flipped_prediction[3,:,:,:],-1)
-]
+pred_list = []
+prediction_network_ = []
+for i in range(n_i):
+    pred_curr = prediction_network[(4*i):(4*i+4),:,:,:]
+    pred_list.extend([
+        pred_curr[0,:,:,:],
+        tf.image.rot90(pred_curr[1,:,:,:],-1),
+        tf.image.rot90(pred_curr[2,:,:,:],-2),
+        tf.image.rot90(pred_curr[3,:,:,:],-3)
+    ])
+    pred_list = tf.stack(pred_list,axis=0)
+    prediction_network_.append(
+        tf.reduce_mean(pred_list,axis=0,keepdims=True)
+    )
+    pred_list = []
 
-prediction_network = tf.stack(pred_list,axis=0)
-prediction_network = tf.reduce_mean(prediction_network,
-                                    axis=0,
-                                    keepdims=True)
+prediction_network = tf.concat(prediction_network_,axis=0)
 
 igwq = ImageGeneratorWithQueue(args.slide_path,args.csv_path,
+                               extra_padding=extra//2,
                                maxsize=args.n_processes_data)
 igwq.start()
 
@@ -167,42 +181,57 @@ Y = []
 F = h5py.File(args.output_path,mode='w')
 N = 0
 i = 0
+times = []
 
 with tf.Session() as sess:
     saver.restore(sess,args.checkpoint_path)
+    images = []
     for image,coords in igwq.generate():
         i += 1
-        A = time.time()
-        segmented_image,image = sess.run(
-            [prediction_network,inputs],
-            feed_dict={'Input_Tensor:0':image[np.newaxis,:,:,:]})
-        for obj in refine_prediction_characterise(image,segmented_image):
-            y,x = obj['x'],obj['y']
-            if np.any([
-                    np.any(x == 0),
-                    np.any(x == (512+256)),
-                    np.any(y == 0),
-                    np.any(y == (512+256))
-            ]):
-                pass
-            else:
-                features = []
-                for k in MIA_FEATURES:
-                    features.append(obj[k])
-                x += coords[0]
-                y += coords[1]
-                C = str([np.mean(x),np.mean(y)])
-                if C not in F:
-                    N += 1
-                    g = F.create_group(str(C))
-                    g.create_dataset("X",x.shape,dtype=np.int32,data=x)
-                    g.create_dataset("Y",y.shape,dtype=np.int32,data=y)
-                    g.create_dataset("features",[len(features)],
-                                     dtype=np.float64,data=features)
-        B = time.time()
+        images.append(image)
+        if len(images) == n_i:
+            images = np.stack(images,axis=0)
+            A = time.time()
+            segmented_images,images = sess.run(
+                [prediction_network,inputs],
+                feed_dict={'Input_Tensor:0':images})
+            for image_idx in range(n_i):
+                image = images[image_idx,:,:,:]
+                segmented_image = segmented_images[image_idx,:,:,:]
+                a = time.time()
+                for obj in refine_prediction_characterise(
+                        image,segmented_image):
+                    y,x = obj['x'],obj['y']
+                    if np.any([
+                            np.any(x == 0),
+                            np.any(x == (h+extra)),
+                            np.any(y == 0),
+                            np.any(y == (w+extra))
+                    ]):
+                        pass
+                    else:
+                        features = []
+                        for k in MIA_FEATURES:
+                            features.append(obj[k])
+                        x += coords[0]
+                        y += coords[1]
+                        C = str([np.mean(x),np.mean(y)])
+                        if C not in F:
+                            N += 1
+                            g = F.create_group(str(C))
+                            g.create_dataset(
+                                "X",x.shape,dtype=np.int32,data=x)
+                            g.create_dataset(
+                                "Y",y.shape,dtype=np.int32,data=y)
+                            g.create_dataset(
+                                "features",[len(features)],
+                                dtype=np.float64,data=features)
+            B = time.time()
+            times.append(B-A)
+            images = []
         if i % 100 == 0:
             sys.stderr.write('Image {}. '.format(i))
-            sys.stderr.write('{} {}'.format(B-A,N))
+            sys.stderr.write('{} {}'.format(np.mean(times)/n_i,N))
             sys.stderr.write('\n')
 
 F.attrs['NCells'] = N

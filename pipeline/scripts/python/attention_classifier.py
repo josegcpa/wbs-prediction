@@ -1,8 +1,7 @@
 """
-Implementation of a DNN using the attention modules described in [1]. It is
-similar to achtung!.py but while achtung!.py was implemented for a specific
-dataset, this one is generalized for a folder containing images and a csv
-containing its classes.
+Implementation of a DNN using the attention modules described in [1].
+Generalized for a folder containing images and a csv containing its
+classes.
 
 [1] http://openaccess.thecvf.com/content_ECCV_2018/papers/Pau_Rodriguez_Lopez_Attend_and_Rectify_ECCV_2018_paper.pdf
 """
@@ -206,7 +205,7 @@ def image_generator(image_path_list, batch_size, width, height, n_channels):
         [train_image,train_input_queue],
         batch_size=batch_size,
         capacity=1000,
-        min_after_dequeue=500,
+        min_after_dequeue=100,
         allow_smaller_final_batch=True
     )
 
@@ -281,7 +280,7 @@ else:
                  yield np.array(Image.open(x)),x
     else:
         igwq = ImageGeneratorWithQueue(csv_path,None,
-                                       maxsize=8)
+                                       maxsize=100)
         igwq.start()
     inputs,file_names = image_generator_from_generator(
       igwq.generate,(tf.uint8,tf.string),
@@ -306,7 +305,6 @@ with slim.arg_scope(training_scope()):
     resnet, end_points = mobilenet_v2_140(inputs,
                                           num_classes=num_classes,
                                           is_training=is_training)
-print(end_points.keys())
 
 if attention == True:
     attention_modules = {
