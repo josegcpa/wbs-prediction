@@ -19,6 +19,9 @@ sys.path.append('/nfs/research1/gerstung/josegcpa/projects/01IMAGE/tf_implementa
 
 import unet_utilities
 
+F_size = 9
+Filter = np.ones([F_size,F_size]) / (F_size**2)
+
 def convolve_n(image,F,n=1,thr=0.6):
     for i in range(n):
         image = convolve(image.astype(np.float32),F) > thr
@@ -28,7 +31,8 @@ def draw_hulls(image):
     contours,hierarchy = cv2.findContours(image.astype(np.uint8),2,1)
     cnt = contours[-1]
     hull = cv2.convexHull(cnt,returnPoints = True)
-    defects = cv2.convexityDefects(cnt, cv2.convexHull(cnt,returnPoints = False))
+    defects = cv2.convexityDefects(
+        cnt, cv2.convexHull(cnt,returnPoints = False))
     if defects is not None:
         defects = defects[defects[:,0,-1]>2000,:,:]
         if defects.size > 0:
@@ -44,25 +48,36 @@ def draw_hulls(image):
     return output,cnt
 
 def characterise_cell(image_labels_im_i):
-    F_size = 9
-    Filter = np.ones([F_size,F_size]) / (F_size**2)
     image,labels_im,i = image_labels_im_i
+    m = 16
+    sh = image.shape
     x,y = np.where(labels_im == i)
-    x = x - x.min() + 16
-    y = y - y.min() + 16
+    R = x.min(),y.min(),x.max(),y.max()
+    sx,sy = R[2]-R[0]+m*2,R[3]-R[1]+m*2
+    cc = [R[0]-m,R[1]-m]
+    cc.extend([cc[0]+sx,cc[1]+sy])
     features = None
-    if x.max() < 150 and y.max() < 150:
+    if np.any(
+            [cc[0]<0,cc[1]<0,
+             cc[2]>sh[0],cc[3]>sh[1],
+             sx>128,sy>128]):
+        pass
+    else:
+        x = x - cc[0]
+        y = y - cc[1]
         S = len(x)
         if (S > 1000) and (S < 8000):
-            mask_binary_holes = np.zeros([150,150])
-            mask_binary_holes[[x,y]] = 1
+            sub_image = image[cc[0]:cc[2],cc[1]:cc[3],:]
+            mask_binary_holes = np.zeros([sx,sy])
+            mask_binary_holes[(x,y)] = 1
             mask_convolved = convolve_n(
                 mask_binary_holes.astype(np.float32),
                 Filter,3,thr=0.5)
             mask_hulls,cnt = draw_hulls(mask_convolved)
             mask_hulls = binary_fill_holes(mask_hulls)
-
-            features = MIA.wrapper_single_image(image,mask_hulls,cnt)
+            s = np.stack([mask_hulls for _ in range(3)],axis=2)
+            features = MIA.wrapper_single_image(
+                sub_image,mask_hulls,cnt)
     return features
 
 
@@ -119,7 +134,7 @@ parser.add_argument('--n_processes_data',dest='n_processes_data',
 args = parser.parse_args()
 
 h,w,extra = 512,512,128
-n_i = 2
+n_i = 1
 inputs = tf.placeholder(tf.uint8,
                         [None,h+extra,w+extra,3],
                         name='Input_Tensor')
@@ -182,6 +197,7 @@ F = h5py.File(args.output_path,mode='w')
 N = 0
 i = 0
 times = []
+Centers = {}
 
 with tf.Session() as sess:
     saver.restore(sess,args.checkpoint_path)
@@ -198,15 +214,14 @@ with tf.Session() as sess:
             for image_idx in range(n_i):
                 image = images[image_idx,:,:,:]
                 segmented_image = segmented_images[image_idx,:,:,:]
-                a = time.time()
                 for obj in refine_prediction_characterise(
                         image,segmented_image):
                     y,x = obj['x'],obj['y']
                     if np.any([
-                            np.any(x == 0),
-                            np.any(x == (h+extra)),
-                            np.any(y == 0),
-                            np.any(y == (w+extra))
+                            x.min() == 0,
+                            x.max() == (h+extra),
+                            y.min() == 0,
+                            y.max() == (w+extra)
                     ]):
                         pass
                     else:
@@ -216,7 +231,8 @@ with tf.Session() as sess:
                         x += coords[0]
                         y += coords[1]
                         C = str([np.mean(x),np.mean(y)])
-                        if C not in F:
+                        if C not in Centers:
+                            Centers[C] = 1
                             N += 1
                             g = F.create_group(str(C))
                             g.create_dataset(
@@ -231,8 +247,11 @@ with tf.Session() as sess:
             images = []
         if i % 100 == 0:
             sys.stderr.write('Image {}. '.format(i))
-            sys.stderr.write('{} {}'.format(np.mean(times)/n_i,N))
+            sys.stderr.write(
+                'Av. time/image={.3f} (for last 100 images={.3f}) No. detected cells{}'.format(
+                    np.mean(times)/n_i,N))
             sys.stderr.write('\n')
+            #times = []
 
 F.attrs['NCells'] = N
 F.attrs['NImages'] = i

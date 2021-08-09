@@ -1,0 +1,363 @@
+id,fine_class,coarse_class
+I_1,normal finding,normal
+I_10,normal finding,normal
+I_11,normal finding,normal
+I_12,normal finding,normal
+I_13,normal finding,normal
+I_14,normal finding,normal
+I_15,normal finding,normal
+I_16,normal finding,normal
+I_17,normal finding,normal
+I_18,normal finding,normal
+I_19,normal finding,normal
+I_2,normal finding,normal
+I_20,normal finding,normal
+I_3,normal finding,normal
+I_4,normal finding,normal
+I_5,normal finding,normal
+I_6,normal finding,normal
+I_7,normal finding,normal
+I_8,normal finding,normal
+I_9,normal finding,normal
+II_1,MDS SF3B1 mutated,mds
+II_10,MDS SF3B1 mutated,mds
+II_11,MDS SF3B1 mutated,mds
+II_12,MDS SF3B1 mutated,mds
+II_13,MDS SF3B1 mutated,mds
+II_14,MDS SF3B1 mutated,mds
+II_15,MDS SF3B1 mutated,mds
+II_16,MDS SF3B1 mutated,mds
+II_17,MDS SF3B1 mutated,mds
+II_18,MDS SF3B1 mutated,mds
+II_19,MDS SF3B1 mutated,mds
+II_2,MDS SF3B1 mutated,mds
+II_20,MDS SF3B1 mutated,mds
+II_21,MDS SF3B1 mutated,mds
+II_22,MDS SF3B1 mutated,mds
+II_23,MDS SF3B1 mutated,mds
+II_24,MDS SF3B1 mutated,mds
+II_25,MDS SF3B1 mutated,mds
+II_26,MDS SF3B1 mutated,mds
+II_3,MDS SF3B1 mutated,mds
+II_4,MDS SF3B1 mutated,mds
+II_5,MDS SF3B1 mutated,mds
+II_6,MDS SF3B1 mutated,mds
+II_7,MDS SF3B1 mutated,mds
+II_8,MDS SF3B1 mutated,mds
+II_9,MDS SF3B1 mutated,mds
+III_1,MDS SF3B1 mutated,mds
+III_10,MDS SF3B1 mutated,mds
+III_11,MDS SF3B1 mutated,mds
+III_12,MDS SF3B1 mutated,mds
+III_13,MDS SF3B1 mutated,mds
+III_14,MDS SF3B1 mutated,mds
+III_15,MDS SF3B1 mutated,mds
+III_16,MDS SF3B1 mutated,mds
+III_17,MDS SF3B1 mutated,mds
+III_18,MDS SF3B1 mutated,mds
+III_19,MDS SF3B1 mutated,mds
+III_2,MDS SF3B1 mutated,mds
+III_20,MDS SF3B1 mutated,mds
+III_21,MDS SF3B1 mutated,mds
+III_22,MDS SF3B1 mutated,mds
+III_23,MDS SF3B1 mutated,mds
+III_24,MDS SF3B1 mutated,mds
+III_25,MDS SF3B1 mutated,mds
+III_26,MDS SF3B1 mutated,mds
+III_27,MDS SF3B1 mutated,mds
+III_28,MDS SF3B1 mutated,mds
+III_29,MDS SF3B1 mutated,mds
+III_3,MDS SF3B1 mutated,mds
+III_30,MDS SF3B1 mutated,mds
+III_4,MDS SF3B1 mutated,mds
+III_5,MDS SF3B1 mutated,mds
+III_6,MDS SF3B1 mutated,mds
+III_7,MDS SF3B1 mutated,mds
+III_8,MDS SF3B1 mutated,mds
+III_9,MDS SF3B1 mutated,mds
+IV_1,MDS SF3B1 mutated,mds
+IV_10,MDS SF3B1 mutated,mds
+IV_11,MDS SF3B1 mutated,mds
+IV_12,MDS SF3B1 mutated,mds
+IV_13,MDS SF3B1 mutated,mds
+IV_14,MDS SF3B1 mutated,mds
+IV_15,MDS SF3B1 mutated,mds
+IV_16,MDS SF3B1 mutated,mds
+IV_17,MDS SF3B1 mutated,mds
+IV_18,MDS SF3B1 mutated,mds
+IV_19,MDS SF3B1 mutated,mds
+IV_2,MDS SF3B1 mutated,mds
+IV_20,MDS SF3B1 mutated,mds
+IV_21,MDS SF3B1 mutated,mds
+IV_22,MDS SF3B1 mutated,mds
+IV_23,MDS SF3B1 mutated,mds
+IV_24,MDS SF3B1 mutated,mds
+IV_25,MDS SF3B1 mutated,mds
+IV_26,MDS SF3B1 mutated,mds
+IV_27,MDS SF3B1 mutated,mds
+IV_28,MDS SF3B1 mutated,mds
+IV_29,MDS SF3B1 mutated,mds
+IV_3,MDS SF3B1 mutated,mds
+IV_30,MDS SF3B1 mutated,mds
+IV_4,MDS SF3B1 mutated,mds
+IV_5,MDS SF3B1 mutated,mds
+IV_6,MDS SF3B1 mutated,mds
+IV_7,MDS SF3B1 mutated,mds
+IV_8,MDS SF3B1 mutated,mds
+IV_9,MDS SF3B1 mutated,mds
+IX_1,Iron deficiency anaemia,anemia
+IX_2,Iron deficiency anaemia,anemia
+IX_3,MDS U2AF1 mutated,mds
+IX_4,MDS SRSF2 mutated,mds
+IX_5,MDS U2AF1 mutated,mds
+IX_6,Megaloblastic anemia,anemia
+V_1,MDS SF3B1 mutated,mds
+V_10,MDS SF3B1 mutated,mds
+V_2,MDS SF3B1 mutated,mds
+V_3,MDS SF3B1 mutated,mds
+V_4,MDS SF3B1 mutated,mds
+V_5,MDS SF3B1 mutated,mds
+V_6,MDS SF3B1 mutated,mds
+V_7,MDS SF3B1 mutated,mds
+V_8,MDS SF3B1 mutated,mds
+V_9,MDS SF3B1 mutated,mds
+VI_1,MDS SRSF2 mutated,mds
+VI_10,MDS U2AF1 mutated,mds
+VI_11,MDS U2AF1 mutated,mds
+VI_12,MDS U2AF1 mutated,mds
+VI_13,MDS SRSF2 mutated,mds
+VI_2,MDS SRSF2 mutated,mds
+VI_3,MDS RUNX1 mutated,mds
+VI_4,MDS RUNX1 mutated,mds
+VI_5,MDS U2AF1 mutated,mds
+VI_6,MDS SRSF2 mutated,mds
+VI_7,MDS SRSF2 mutated,mds
+VI_8,MDS U2AF1 mutated,mds
+VI_9,MDS U2AF1 mutated,mds
+VII_1,MDS SRSF2 mutated,mds
+VII_10,Iron deficiency anaemia,anemia
+VII_11,MDS SRSF2 mutated,mds
+VII_12,MDS RUNX1 mutated,mds
+VII_13,MDS U2AF1 mutated,mds
+VII_14,MDS U2AF1 mutated,mds
+VII_15,Iron deficiency anaemia,anemia
+VII_16,Megaloblastic anemia,anemia
+VII_17,Megaloblastic anemia,anemia
+VII_18,MDS SRSF2 mutated,mds
+VII_19,MDS SRSF2 mutated,mds
+VII_2,Megaloblastic anemia,anemia
+VII_20,MDS SRSF2 mutated,mds
+VII_21,MDS SRSF2 mutated,mds
+VII_22,Megaloblastic anemia,anemia
+VII_23,Megaloblastic anemia,anemia
+VII_24,MDS U2AF1 mutated,mds
+VII_25,MDS SRSF2 mutated,mds
+VII_26,MDS U2AF1 mutated,mds
+VII_27,MDS SRSF2 mutated,mds
+VII_28,MDS U2AF1 mutated,mds
+VII_29,MDS U2AF1 mutated,mds
+VII_3,Megaloblastic anemia,anemia
+VII_30,MDS RUNX1 mutated,mds
+VII_4,MDS SRSF2 mutated,mds
+VII_5,Megaloblastic anemia,anemia
+VII_6,MDS RUNX1 mutated,mds
+VII_7,Megaloblastic anemia,anemia
+VII_8,MDS SRSF2 mutated,mds
+VII_9,MDS U2AF1 mutated,mds
+VIII_1,MDS RUNX1 mutated,mds
+VIII_10,Megaloblastic anemia,anemia
+VIII_11,Megaloblastic anemia,anemia
+VIII_12,MDS U2AF1 mutated,mds
+VIII_13,Iron deficiency anaemia,anemia
+VIII_14,MDS U2AF1 mutated,mds
+VIII_15,MDS SRSF2 mutated,mds
+VIII_16,MDS RUNX1 mutated,mds
+VIII_17,MDS SRSF2 mutated,mds
+VIII_18,MDS U2AF1 mutated,mds
+VIII_19,MDS RUNX1 mutated,mds
+VIII_2,Megaloblastic anemia,anemia
+VIII_20,MDS RUNX1 mutated,mds
+VIII_21,MDS U2AF1 mutated,mds
+VIII_22,Iron deficiency anaemia,anemia
+VIII_23,Iron deficiency anaemia,anemia
+VIII_24,MDS SRSF2 mutated,mds
+VIII_3,MDS RUNX1 mutated,mds
+VIII_4,MDS U2AF1 mutated,mds
+VIII_5,Iron deficiency anaemia,anemia
+VIII_6,MDS U2AF1 mutated,mds
+VIII_7,Megaloblastic anemia,anemia
+VIII_8,Megaloblastic anemia,anemia
+VIII_9,Megaloblastic anemia,anemia
+X_1,MDS SRSF2 mutated,mds
+X_10,MDS U2AF1 mutated,mds
+X_11,Megaloblastic anemia,anemia
+X_12,MDS SRSF2 mutated,mds
+X_13,Megaloblastic anemia,anemia
+X_14,MDS SRSF2 mutated,mds
+X_15,Megaloblastic anemia,anemia
+X_16,MDS SRSF2 mutated,mds
+X_2,Megaloblastic anemia,anemia
+X_3,MDS U2AF1 mutated,mds
+X_4,Iron deficiency anaemia,anemia
+X_5,MDS SRSF2 mutated,mds
+X_6,Megaloblastic anemia,anemia
+X_7,Iron deficiency anaemia,anemia
+X_8,normal finding,normal
+X_9,MDS SRSF2 mutated,mds
+XI_1,MDS SF3B1 mutated,mds
+XI_10,MDS SF3B1 mutated,mds
+XI_11,MDS SF3B1 mutated,mds
+XI_12,MDS SF3B1 mutated,mds
+XI_13,MDS SF3B1 mutated,mds
+XI_14,MDS SF3B1 mutated,mds
+XI_15,MDS SF3B1 mutated,mds
+XI_16,MDS SF3B1 mutated,mds
+XI_2,MDS SF3B1 mutated,mds
+XI_3,MDS SF3B1 mutated,mds
+XI_4,MDS SF3B1 mutated,mds
+XI_5,MDS SF3B1 mutated,mds
+XI_6,MDS SF3B1 mutated,mds
+XI_7,MDS SF3B1 mutated,mds
+XI_8,MDS SF3B1 mutated,mds
+XI_9,MDS SF3B1 mutated,mds
+XII_1,MDS SF3B1 mutated,mds
+XII_10,MDS SF3B1 mutated,mds
+XII_11,MDS SF3B1 mutated,mds
+XII_12,MDS SF3B1 mutated,mds
+XII_13,MDS SF3B1 mutated,mds
+XII_14,MDS SF3B1 mutated,mds
+XII_15,MDS SF3B1 mutated,mds
+XII_16,MDS SF3B1 mutated,mds
+XII_17,MDS SF3B1 mutated,mds
+XII_18,MDS SF3B1 mutated,mds
+XII_2,MDS SF3B1 mutated,mds
+XII_20,MDS SF3B1 mutated,mds
+XII_3,MDS SF3B1 mutated,mds
+XII_4,MDS SF3B1 mutated,mds
+XII_5,MDS SF3B1 mutated,mds
+XII_6,MDS SF3B1 mutated,mds
+XII_7,MDS SF3B1 mutated,mds
+XII_8,MDS SF3B1 mutated,mds
+XII_9,MDS SF3B1 mutated,mds
+XIII_1,MDS RUNX1 mutated,mds
+XIII_10,MDS U2AF1 mutated,mds
+XIII_11,MDS U2AF1 mutated,mds
+XIII_12,MDS SRSF2 mutated,mds
+XIII_13,normal finding,normal
+XIII_14,MDS RUNX1 mutated,mds
+XIII_15,normal finding,normal
+XIII_16,normal finding,normal
+XIII_17,normal finding,normal
+XIII_18,normal finding,normal
+XIII_19,normal finding,normal
+XIII_2,normal finding,normal
+XIII_20,normal finding,normal
+XIII_21,normal finding,normal
+XIII_22,normal finding,normal
+XIII_23,normal finding,normal
+XIII_24,normal finding,normal
+XIII_25,normal finding,normal
+XIII_26,normal finding,normal
+XIII_27,normal finding,normal
+XIII_28,normal finding,normal
+XIII_29,normal finding,normal
+XIII_3,MDS SRSF2 mutated,mds
+XIII_30,normal finding,normal
+XIII_4,normal finding,normal
+XIII_5,MDS RUNX1 mutated,mds
+XIII_6,MDS RUNX1 mutated,mds
+XIII_7,MDS RUNX1 mutated,mds
+XIII_8,MDS RUNX1 mutated,mds
+XIII_9,MDS RUNX1 mutated,mds
+XIV_1,normal finding,normal
+XIV_2,normal finding,normal
+XIV_3,normal finding,normal
+XV_1,MDS SRSF2 mutated,mds
+XV_10,Iron deficiency anaemia,anemia
+XV_11,Megaloblastic anemia,anemia
+XV_12,Megaloblastic anemia,anemia
+XV_13,Megaloblastic anemia,anemia
+XV_14,Megaloblastic anemia,anemia
+XV_15,Megaloblastic anemia,anemia
+XV_16,MDS SRSF2 mutated,mds
+XV_17,Megaloblastic anemia,anemia
+XV_18,Megaloblastic anemia,anemia
+XV_19,Megaloblastic anemia,anemia
+XV_2,Megaloblastic anemia,anemia
+XV_20,Megaloblastic anemia,anemia
+XV_21,Megaloblastic anemia,anemia
+XV_22,Megaloblastic anemia,anemia
+XV_23,Iron deficiency anaemia,anemia
+XV_24,Iron deficiency anaemia,anemia
+XV_25,Iron deficiency anaemia,anemia
+XV_26,Megaloblastic anemia,anemia
+XV_27,Megaloblastic anemia,anemia
+XV_28,Iron deficiency anaemia,anemia
+XV_29,Iron deficiency anaemia,anemia
+XV_3,Megaloblastic anemia,anemia
+XV_30,Iron deficiency anaemia,anemia
+XV_4,Megaloblastic anemia,anemia
+XV_5,MDS SRSF2 mutated,mds
+XV_6,Megaloblastic anemia,anemia
+XV_7,MDS SRSF2 mutated,mds
+XV_8,Megaloblastic anemia,anemia
+XV_9,Iron deficiency anaemia,anemia
+XVI_1,Iron deficiency anaemia,anemia
+XVI_10,Megaloblastic anemia,anemia
+XVI_11,Megaloblastic anemia,anemia
+XVI_12,Iron deficiency anaemia,anemia
+XVI_13,Megaloblastic anemia,anemia
+XVI_14,Iron deficiency anaemia,anemia
+XVI_15,Megaloblastic anemia,anemia
+XVI_16,MDS SRSF2 mutated,mds
+XVI_17,normal finding,normal
+XVI_18,normal finding,normal
+XVI_19,normal finding,normal
+XVI_2,Iron deficiency anaemia,anemia
+XVI_20,normal finding,normal
+XVI_21,normal finding,normal
+XVI_22,normal finding,normal
+XVI_23,MDS U2AF1 mutated,mds
+XVI_24,MDS SRSF2 mutated,mds
+XVI_25,normal finding,normal
+XVI_26,MDS RUNX1 mutated,mds
+XVI_27,MDS RUNX1 mutated,mds
+XVI_28,normal finding,normal
+XVI_29,MDS RUNX1 mutated,mds
+XVI_3,Iron deficiency anaemia,anemia
+XVI_30,normal finding,normal
+XVI_4,Iron deficiency anaemia,anemia
+XVI_5,Iron deficiency anaemia,anemia
+XVI_6,Megaloblastic anemia,anemia
+XVI_7,Megaloblastic anemia,anemia
+XVI_8,Iron deficiency anaemia,anemia
+XVI_9,Iron deficiency anaemia,anemia
+XVII_1,MDS U2AF1 mutated,mds
+XVII_10,MDS U2AF1 mutated,mds
+XVII_11,normal finding,normal
+XVII_12,MDS RUNX1 mutated,mds
+XVII_13,MDS RUNX1 mutated,mds
+XVII_14,normal finding,normal
+XVII_15,MDS SRSF2 mutated,mds
+XVII_16,normal finding,normal
+XVII_17,MDS RUNX1 mutated,mds
+XVII_18,MDS RUNX1 mutated,mds
+XVII_19,MDS SRSF2 mutated,mds
+XVII_2,normal finding,normal
+XVII_20,MDS SRSF2 mutated,mds
+XVII_21,MDS SRSF2 mutated,mds
+XVII_22,MDS RUNX1 mutated,mds
+XVII_23,MDS RUNX1 mutated,mds
+XVII_24,MDS SRSF2 mutated,mds
+XVII_25,MDS RUNX1 mutated,mds
+XVII_26,MDS RUNX1 mutated,mds
+XVII_27,MDS RUNX1 mutated,mds
+XVII_28,MDS SRSF2 mutated,mds
+XVII_29,MDS RUNX1 mutated,mds
+XVII_3,MDS RUNX1 mutated,mds
+XVII_30,MDS RUNX1 mutated,mds
+XVII_4,MDS RUNX1 mutated,mds
+XVII_5,MDS RUNX1 mutated,mds
+XVII_6,MDS SRSF2 mutated,mds
+XVII_7,normal finding,normal
+XVII_8,normal finding,normal

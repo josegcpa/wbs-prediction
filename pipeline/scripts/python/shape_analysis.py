@@ -6,6 +6,7 @@ from math import pi
 import numpy as np
 import time
 from scipy.stats import moment
+from scipy.interpolate import interp1d
 import cv2
 
 # Shape parameters
@@ -556,6 +557,14 @@ def fourier_complexity(z):
 
     return np.trapz(error_list) / len(error_list)
 
+def subsample(y,n=150):
+    if y.shape[0] < n:
+        return y
+    a = time.time()
+    x = np.linspace(0,1,num=y.shape[0],endpoint=False)
+    new_x = np.linspace(0,1,num=n,endpoint=False)
+    return interp1d(x,y)(new_x)
+
 def wrapper(x,y,cnt):
     gx,gy = centroid(x,y)
     x_bound,y_bound = cnt_to_xy(cnt)
@@ -564,6 +573,8 @@ def wrapper(x,y,cnt):
     out = {}
     cdf = centroid_distance_function(x_bound,y_bound,gx,gy)
     cuf = curvature(x_bound,y_bound)[1]
+    cdf = subsample(cdf[:,0])[:,np.newaxis]
+    cuf = subsample(cuf[:,0])[:,np.newaxis]
 
     out['eccentricity'] = eccentricity(cxx,cyy,cxy)
     out['area'] = area(cnt)

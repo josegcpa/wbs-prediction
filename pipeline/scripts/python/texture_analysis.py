@@ -21,11 +21,9 @@ def glcm(image,x,y):
     return gray_matrix
 
 def texture_features(image,x,y):
-    #gray_matrix = np.expand_dims(
-    #    np.expand_dims(glcm(image,x,y),-1),-1)
-    image = image.copy()
-    coords = np.stack([x,y],1)
-    image[~coords] = 32
+    mask = np.ones_like(image,dtype=np.bool)
+    mask[x,y] = False
+    image[mask] = 32
     gray_matrix = greycomatrix(
         image,distances=[1,2,3,4],angles=[0,np.pi/2,np.pi,-np.pi/2],
         symmetric=True,levels=33
@@ -36,6 +34,7 @@ def texture_features(image,x,y):
     energy = greycoprops(gray_matrix,'energy').mean()
     homogeneity = greycoprops(gray_matrix,'homogeneity').mean()
     correlation = greycoprops(gray_matrix,'correlation').mean()
+    del image
     return [np.squeeze(contrast),np.squeeze(energy),
             np.squeeze(homogeneity),np.squeeze(correlation)]
 

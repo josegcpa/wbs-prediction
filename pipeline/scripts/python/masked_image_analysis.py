@@ -36,13 +36,13 @@ def wrapper_single_image_separate(image,mask,cnt):
 def wrapper_single_image(image,mask,cnt):
     q_image = ta.quantize_image(image)
     x,y = np.where(mask > 0)
-    a = time.time()
+    #a = time.time()
     shape_features = sa.wrapper(x,y,cnt)
-    b = time.time()
+    #b = time.time()
     color_features = cda.wrapper(image,cnt,x,y)
-    c = time.time()
+    #c = time.time()
     texture_features = ta.wrapper(q_image,x,y)
-    d = time.time()
+    #d = time.time()
     out_dict = {**shape_features,**color_features,**texture_features}
     return {'x':x,
             'y':y,
