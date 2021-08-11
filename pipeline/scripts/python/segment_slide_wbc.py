@@ -246,12 +246,16 @@ with tf.Session() as sess:
             times.append(B-A)
             images = []
         if i % 100 == 0:
-            sys.stderr.write('Image {}. '.format(i))
-            sys.stderr.write(
-                'Av. time/image={.3f} (for last 100 images={.3f}) No. detected cells{}'.format(
-                    np.mean(times)/n_i,N))
-            sys.stderr.write('\n')
-            #times = []
+            sys.stdout.write('Image {}. '.format(i))
+            sys.stdout.write(
+                'Av. time/image={:.3f}s '.format(
+                    float(np.mean(times))/n_i))
+            sys.stdout.write(
+                '(for last 100 images={:.3f}s); '.format(
+                    float(np.mean(times[-100:]))/n_i))
+            sys.stdout.write(
+                'No. detected cells={}'.format(N))
+            sys.stdout.write('\n')
 
 F.attrs['NCells'] = N
 F.attrs['NImages'] = i

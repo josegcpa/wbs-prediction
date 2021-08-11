@@ -6,7 +6,7 @@ do
     log_file=logs/salim_$slide_name.o
     log_file_err=logs/salim_$slide_name.e
     job_name=SALIM_$(basename $file | rev | cut -d '.' -f 2- | rev)
-    echo bsub\
+    bsub\
         -P gpu\
         -M 16000\
         -gpu "num=1:j_exclusive=yes"\

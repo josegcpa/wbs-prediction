@@ -5,9 +5,10 @@ slide_path = config['slide_path']
 output_path = config['output_path']
 slide_id = slide_path.split('/')[-1].split('.')[0]
 
-for folder in ['_datasets','_aggregates','_quality_control',
+for folder in ['_quality_control',
                '_segmented_wbc','_segmented_rbc',
-               '_aggregates_wbc','_aggregates_rbc']:
+               '_aggregates_wbc','_aggregates_rbc',
+               '_checkpoints']:
     try:
         os.makedirs(os.path.join(output_path,folder))
     except:
@@ -19,26 +20,32 @@ rule all:
     input:
         "{}/_aggregates_rbc/{}.h5".format(output_path,slide_id),
         "{}/_aggregates_wbc/{}.h5".format(output_path,slide_id),
+        "{}/_checkpoints/{}_agg_wbc".format(output_path,slide_id),
+        "{}/_checkpoints/{}_agg_rbc".format(output_path,slide_id)
+
 
 rule quality_control:
     input:
         slide_path=slide_path
     output:
-        qc_out="{}/_quality_control/{}".format(output_path,slide_id)
+        qc_out="{}/_quality_control/{}".format(output_path,slide_id),
+        checkpoint_qc="{}/_checkpoints/{}_qc".format(output_path,slide_id)
     message:
         "Running slide through QC network."
     shell:
         """
         sh scripts/bash/quality_checking.sh\
-         {input.slide_path} > {output.qc_out}
+         {input.slide_path} > {output.qc_out} && touch {output.checkpoint_qc}
         """
 
 rule segment_characterise_rbc:
     input:
         slide_path=slide_path,
         qc_out="{}/_quality_control/{}".format(output_path,slide_id),
+        checkpoint_qc="{}/_checkpoints/{}_qc".format(output_path,slide_id)
     output:
-        "{}/_segmented_rbc/{}.h5".format(output_path,slide_id)
+        seg="{}/_segmented_rbc/{}.h5".format(output_path,slide_id),
+        checkpoint_seg_rbc="{}/_checkpoints/{}_seg_rbc".format(output_path,slide_id)
     message:
         "Segmenting RBC."
     params:
@@ -48,17 +55,19 @@ rule segment_characterise_rbc:
         python3 scripts/python/segment_slide_rbc.py \
             --csv_path {input.qc_out} \
             --slide_path {input.slide_path} \
-            --output_path {output} \
+            --output_path {output.seg} \
             --n_processes_analysis 8 \
-            --n_processes_data 2
+            --n_processes_data 2 && touch {output.checkpoint_seg_rbc}
         """
 
 rule segment_characterise_wbc:
     input:
         slide_path=slide_path,
         qc_out="{}/_quality_control/{}".format(output_path,slide_id),
+        checkpoint_qc="{}/_checkpoints/{}_qc".format(output_path,slide_id)
     output:
-        "{}/_segmented_wbc/{}.h5".format(output_path,slide_id)
+        seg="{}/_segmented_wbc/{}.h5".format(output_path,slide_id),
+        checkpoint_seg_wbc="{}/_checkpoints/{}_seg_wbc".format(output_path,slide_id)
     message:
         "Segmenting WBC."
     shell:
@@ -68,15 +77,17 @@ rule segment_characterise_wbc:
             --slide_path {input.slide_path} \
             --checkpoint_path /nfs/research1/gerstung/josegcpa/projects/01IMAGE/u-net/checkpoints/segmentation_dataset_1.0/my_u-net.ckpt-59999 \
             --depth 1.0 \
-            --output_path {output} \
-            --n_processes_data 16
+            --output_path {output.seg} \
+            --n_processes_data 16 && touch {output.checkpoint_seg_wbc}
         """
 
 rule aggregate_rbc:
     input:
-        "{}/_segmented_rbc/{}.h5".format(output_path,slide_id)
+        seg="{}/_segmented_rbc/{}.h5".format(output_path,slide_id),
+        checkpoint_seg_rbc="{}/_checkpoints/{}_seg_rbc".format(output_path,slide_id),
     output:
-        "{}/_aggregates_rbc/{}.h5".format(output_path,slide_id),
+        agg="{}/_aggregates_rbc/{}.h5".format(output_path,slide_id),
+        checkpoint_agg_rbc="{}/_checkpoints/{}_agg_rbc".format(output_path,slide_id)
     message:
         "Aggregating RBC."
     params:
@@ -84,16 +95,18 @@ rule aggregate_rbc:
     shell:
         """
         python3 scripts/python/aggregate_hdf5.py \
-            --hdf5_path {input}\
-            --output_path {output}
+            --hdf5_path {input.seg}\
+            --output_path {output.agg} && touch {output.checkpoint_agg_rbc}
         """
 
 rule aggregate_wbc:
     input:
         segmentation="{}/_segmented_wbc/{}.h5".format(output_path,slide_id),
-        slide=slide_path
+        slide=slide_path,
+        checkpoint_seg_wbc="{}/_checkpoints/{}_seg_wbc".format(output_path,slide_id),
     output:
-        "{}/_aggregates_wbc/{}.h5".format(output_path,slide_id),
+        agg="{}/_aggregates_wbc/{}.h5".format(output_path,slide_id),
+        checkpoint_agg_wbc="{}/_checkpoints/{}_agg_wbc".format(output_path,slide_id)
     message:
         "Aggregating WBC."
     params:
@@ -103,5 +116,5 @@ rule aggregate_wbc:
         python3 scripts/python/aggregate_hdf5_with_nucleus.py \
             --slide_path {input.slide} \
             --hdf5_path {input.segmentation}\
-            --output_path {output}
+            --output_path {output.agg} && touch {output.checkpoint_agg_wbc}
         """
