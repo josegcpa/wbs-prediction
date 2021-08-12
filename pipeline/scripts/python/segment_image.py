@@ -16,8 +16,6 @@ from image_generator import ImageGeneratorWithQueue
 import MIA
 MIA_FEATURES = MIA.MIA_FEATURES
 
-sys.path.append('/nfs/research1/gerstung/josegcpa/projects/01IMAGE/tf_implementations')
-
 import unet_utilities
 
 def convolve_n(image,F,n=1,thr=0.6):

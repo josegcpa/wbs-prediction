@@ -1,0 +1,10 @@
+# paths to data
+export MLL_DIR=/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/
+export MLL_FMT=tiff
+export ADDEN_1_DIR=/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI
+export ADDEN_1_FMT=ndpi
+export ADDEN_2_DIR=/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS
+export ADDEN_2_FMT=svs
+
+# path to unet checkpoint
+export UNET_CKPT=/nfs/research1/gerstung/josegcpa/projects/01IMAGE/u-net/checkpoints/segmentation_dataset_1.0/my_u-net.ckpt-59999

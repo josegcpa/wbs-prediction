@@ -8,7 +8,6 @@ pipeline.sh  run_all.sh
 run_slide.sh
 run_test.sh
 run_all.sh
-submit_all_adden.sh
 submit_all_no_check.sh
 submit_all_no_gpu.sh
-submit_all.sh
+config

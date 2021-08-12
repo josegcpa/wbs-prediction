@@ -1,8 +1,8 @@
 source config
 
-out_path=$ADDEN_2_DIR
+out_path=$MLL_DIR
 
-for file in $(find $ADDEN_2_DIR -name *$ADDEN_2_FMT)
+for file in $(find $MLL_DIR -name *$MLL_FMT)
 do
     slide_name=$(basename $file)
     log_file=logs/salim_$slide_name.o

@@ -70,12 +70,14 @@ rule segment_characterise_wbc:
         checkpoint_seg_wbc="{}/_checkpoints/{}_seg_wbc".format(output_path,slide_id)
     message:
         "Segmenting WBC."
+    params:
+        unet_ckpt = os.environ["UNET_CKPT"]
     shell:
         """
         python3 scripts/python/segment_slide_wbc.py \
             --csv_path {input.qc_out} \
             --slide_path {input.slide_path} \
-            --checkpoint_path /nfs/research1/gerstung/josegcpa/projects/01IMAGE/u-net/checkpoints/segmentation_dataset_1.0/my_u-net.ckpt-59999 \
+            --checkpoint_path {params.unet_ckpt} \
             --depth 1.0 \
             --output_path {output.seg} \
             --n_processes_data 16 && touch {output.checkpoint_seg_wbc}

@@ -1,6 +1,8 @@
-out_path=/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI
+source config
 
-for file in $(find /hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI -name *ndpi)
+out_path=$ADDEN_1_DIR
+
+for file in $(find $ADDEN_1_DIR -name *$ADDEN_1_FMT)
 do
     slide_name=$(basename $file)
     log_file=logs/salim_$slide_name.o
