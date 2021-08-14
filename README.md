@@ -12,16 +12,16 @@ This is the repository for [PLACEHOLDER](). In this work, we use the whole blood
 
 * `python`
 * `snakemake`
-* `R` (mostly for plotting)
+* `R` (analysis and plotting)
 
 #### Required python packages
 
-`opencv-python`,`tensorflow==1.12`,`scikit-image`,`h5py`,`albumentations`,`psutil`,`pytorch`,`tifffile`,`pytorch`
+`opencv-python`, `tensorflow==1.12`, `scikit-image`, `h5py`, `albumentations`, `psutil`, `pytorch`, `tifffile`
 
 ### Project enumeration
 
 1. `pipeline` - contains the pipeline for WBC and RBC detection and characterisation from WBS
 2. `simulations` - contains simulations validating MILe-ViCe
 3. `mile-vice` - contains the code to train and run MILe-ViCe on the output from `pipeline`
-4. `rbc-segmentation` - contains the code to train a predictor that filters poorly predicted RBC
+4. `rbc-segmentation` - contains the code to train a predictor that filters poorly predictions for detected RBC
 5. (STILL TESTING) `vae-characterisation` - characterisation of blood cells using a beta-variational autoencoder
