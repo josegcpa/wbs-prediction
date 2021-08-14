@@ -3,6 +3,9 @@ import os
 
 slide_path = config['slide_path']
 output_path = config['output_path']
+unet_ckpt = config['unet_ckpt']
+qc_ckpt = config['qc_ckpt']
+
 slide_id = slide_path.split('/')[-1].split('.')[0]
 
 for folder in ['_quality_control',
@@ -32,10 +35,12 @@ rule quality_control:
         checkpoint_qc="{}/_checkpoints/{}_qc".format(output_path,slide_id)
     message:
         "Running slide through QC network."
+    params:
+        qc_ckpt=qc_ckpt
     shell:
         """
         sh scripts/bash/quality_checking.sh\
-         {input.slide_path} > {output.qc_out} && touch {output.checkpoint_qc}
+         {input.slide_path} {params.qc_ckpt} > {output.qc_out} && touch {output.checkpoint_qc}
         """
 
 rule segment_characterise_rbc:
@@ -68,10 +73,10 @@ rule segment_characterise_wbc:
     output:
         seg="{}/_segmented_wbc/{}.h5".format(output_path,slide_id),
         checkpoint_seg_wbc="{}/_checkpoints/{}_seg_wbc".format(output_path,slide_id)
+    params:
+        unet_ckpt=unet_ckpt
     message:
         "Segmenting WBC."
-    params:
-        unet_ckpt = os.environ["UNET_CKPT"]
     shell:
         """
         python3 scripts/python/segment_slide_wbc.py \

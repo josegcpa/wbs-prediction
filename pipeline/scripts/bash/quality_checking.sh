@@ -1,7 +1,6 @@
 NET_PATH=scripts/python/attention_classifier.py
-#NET_PATH=/nfs/research1/gerstung/josegcpa/projects/01IMAGE/quality_net/attention_classifier.py
-CKPT_PATH=/nfs/research1/gerstung/josegcpa/projects/01IMAGE/quality_net/achtung_no_attention.ckpt
 SLIDE_PATH=$1
+CKPT_PATH=$2
 PLACEHOLDER_STR=n
 PLACEHOLDER_FLOAT=0.01
 PLACEHOLDER_INT=1

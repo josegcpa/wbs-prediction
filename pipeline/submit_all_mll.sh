@@ -1,4 +1,4 @@
-source config
+source ./config
 
 out_path=$MLL_DIR
 
@@ -16,5 +16,5 @@ do
         -o logs/salim_$(basename $slide_name).o\
         -e logs/salim_$(basename $slide_name).e\
         -W 48:00\
-        sh pipeline.sh $file $out_path
+        sh pipeline.sh $file $out_path $UNET_CKPT $QC_CKPT
 done

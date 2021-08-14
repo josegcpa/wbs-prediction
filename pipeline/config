@@ -8,3 +8,6 @@ export ADDEN_2_FMT=svs
 
 # path to unet checkpoint
 export UNET_CKPT=/nfs/research1/gerstung/josegcpa/projects/01IMAGE/u-net/checkpoints/segmentation_dataset_1.0/my_u-net.ckpt-59999
+
+# path to qc net
+export QC_CKPT=/nfs/research1/gerstung/josegcpa/projects/01IMAGE/quality_net/achtung_no_attention.ckpt
