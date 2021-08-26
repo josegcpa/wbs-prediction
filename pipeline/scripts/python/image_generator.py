@@ -1,5 +1,6 @@
 import numpy as np
 import openslide
+from openslide import OpenSlideError
 from multiprocessing import Queue,Process
 
 def image_generator(quality_csv_path,slide_path,extra_padding=128):
@@ -15,19 +16,22 @@ def image_generator(quality_csv_path,slide_path,extra_padding=128):
             else:
                 negatives.append([int(data[1]),int(data[2])])
     for x,y in positives:
-        x = x - extra_padding
-        y = y - extra_padding
-        x = np.maximum(0,x)
-        y = np.maximum(0,y)
-        if x + 512 + (2*extra_padding) > OS.dimensions[0]:
-            x = OS.dimensions[0] - 512 - (extra_padding*2)
-        if y + 512 + (2*extra_padding) > OS.dimensions[1]:
-            y = OS.dimensions[1] - 512 - (extra_padding*2)
-        image = OS.read_region(
-            (x,y),0,
-            (512+(extra_padding*2),512+(extra_padding*2)))
-        image = np.array(image)[:,:,:3]
-        yield image,[x,y]
+        try:
+            x = x - extra_padding
+            y = y - extra_padding
+            x = np.maximum(0,x)
+            y = np.maximum(0,y)
+            if x + 512 + (2*extra_padding) > OS.dimensions[0]:
+                x = OS.dimensions[0] - 512 - (extra_padding*2)
+            if y + 512 + (2*extra_padding) > OS.dimensions[1]:
+                y = OS.dimensions[1] - 512 - (extra_padding*2)
+            image = OS.read_region(
+                (x,y),0,
+                (512+(extra_padding*2),512+(extra_padding*2)))
+            image = np.array(image)[:,:,:3]
+            yield image,[x,y]
+        except OpenSlideError as error:
+            pass
 
 def image_generator_slide(slide_path,
                           height=512,width=512):
@@ -35,19 +39,26 @@ def image_generator_slide(slide_path,
     dim = OS.dimensions
     for x in range(0,dim[0],height):
         for y in range(0,dim[1],width):
-            im = OS.read_region((x,y),0,(height,width))
-            im = np.array(im)
-            im = im[:,:,:3]
-            yield im,'{},{}'.format(x,y)
+            try:
+                im = OS.read_region((x,y),0,(height,width))
+                im = np.array(im)
+                im = im[:,:,:3]
+                yield im,'{},{}'.format(x,y)
+            except OpenSlideError as error:
+                pass
 
 class ImageGeneratorWithQueue:
     def __init__(self,slide_path,csv_path,
                  extra_padding=128,
-                 maxsize=1):
+                 maxsize=1,
+                 height=512,
+                 width=512):
         self.maxsize = maxsize
         self.csv_path = csv_path
         self.slide_path = slide_path
         self.extra_padding = extra_padding
+        self.height = height
+        self.width = width
 
         self.q = Queue(self.maxsize)
         self.p = Process(
@@ -62,7 +73,9 @@ class ImageGeneratorWithQueue:
                 extra_padding=extra_padding
             )
         else:
-            im_gen = image_generator_slide(slide_path)
+            im_gen = image_generator_slide(
+                slide_path,
+                self.height,self.width)
         for element in im_gen:
             q.put(element)
         q.put(None)

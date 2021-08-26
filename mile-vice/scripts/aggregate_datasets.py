@@ -10,12 +10,20 @@ except:
 
 dataset_folders = [
     '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_rbc'
+    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_rbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_wbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_rbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS/_aggregates_wbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS/_aggregates_rbc'
 ]
 
 dataset_output = [
     'datasets/wbc.h5',
-    'datasets/rbc.h5'
+    'datasets/rbc.h5',
+    'datasets/wbc_adden_1.h5',
+    'datasets/rbc_adden_1.h5',
+    'datasets/wbc_adden_2.h5',
+    'datasets/rbc_adden_2.h5'
 ]
 
 for dataset_folder,dataset in zip(dataset_folders,dataset_output):

@@ -18,15 +18,14 @@ import openslide
 
 from image_generator import ImageGeneratorWithQueue
 
-height = 512
-width = 512
+height = 1024
+width = 1024
 n_channels = 3
 
 csv_path = sys.argv[1]
 
-
 image_path_list = sorted(glob(csv_path + '/*'))
-igwq = ImageGeneratorWithQueue(csv_path,None,maxsize=16,extra_padding=32)
+igwq = ImageGeneratorWithQueue(csv_path,None,maxsize=16,extra_padding=32,height=height,width=width)
 igwq.start()
 for image in igwq.generate():
     print(image[0].shape,image[1])

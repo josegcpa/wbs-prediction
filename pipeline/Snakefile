@@ -83,7 +83,7 @@ rule segment_characterise_wbc:
             --csv_path {input.qc_out} \
             --slide_path {input.slide_path} \
             --checkpoint_path {params.unet_ckpt} \
-            --depth 1.0 \
+            --depth 0.25 \
             --output_path {output.seg} \
             --n_processes_data 16 && touch {output.checkpoint_seg_wbc}
         """

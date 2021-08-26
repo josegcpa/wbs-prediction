@@ -2,16 +2,15 @@ import sys
 import numpy as np
 import argparse
 import time
-import h5py
 import openslide
 import cv2
+import os
 from PIL import Image
 from scipy.ndimage import convolve
 from skimage.filters import apply_hysteresis_threshold
 from scipy.ndimage.morphology import binary_fill_holes
 import tensorflow as tf
 
-from image_generator import ImageGeneratorWithQueue
 import MIA
 MIA_FEATURES = MIA.MIA_FEATURES
 
@@ -49,8 +48,8 @@ def characterise_cell(image_labels_im_i):
     image,labels_im,i = image_labels_im_i
     m = 16
     sh = image.shape
-    x,y = np.where(labels_im == i)
-    R = x.min(),y.min(),x.max(),y.max()
+    x_,y_ = np.where(labels_im == i)
+    R = x_.min(),y_.min(),x_.max(),y_.max()
     sx,sy = R[2]-R[0]+m*2,R[3]-R[1]+m*2
     cc = [R[0]-m,R[1]-m]
     cc.extend([cc[0]+sx,cc[1]+sy])
@@ -61,8 +60,8 @@ def characterise_cell(image_labels_im_i):
              sx>128,sy>128]):
         pass
     else:
-        x = x - cc[0]
-        y = y - cc[1]
+        x = x_ - cc[0]
+        y = y_ - cc[1]
         S = len(x)
         if (S > 1000) and (S < 8000):
             sub_image = image[cc[0]:cc[2],cc[1]:cc[3],:]
@@ -101,10 +100,6 @@ parser = argparse.ArgumentParser(
       description = 'Multi-purpose U-Net implementation.'
 )
 
-parser.add_argument('--csv_path',dest='csv_path',
-                    action='store',
-                    default=None,
-                    help='Path to CSV file with the quality file.')
 parser.add_argument('--slide_path',dest='slide_path',
                     action='store',
                     default=None)
@@ -124,19 +119,39 @@ parser.add_argument('--squeeze_and_excite',dest='squeeze_and_excite',
 parser.add_argument('--output_path',dest='output_path',
                     action='store',
                     default=False,
-                    help='Output path for the hdf5 file.')
-parser.add_argument('--n_processes_data',dest='n_processes_data',
+                    help='Path for folder with images and predictions.')
+parser.add_argument('--x',dest='x',
+                    action='append',
+                    type=int,nargs='+',
+                    default=[],
+                    help='X coordinates for the slide.')
+parser.add_argument('--y',dest='y',
+                    action='append',
+                    type=int,nargs='+',
+                    default=[],
+                    help='Y coordinates for the slide.')
+parser.add_argument('--height',dest='height',
                     action='store',
                     type=int,
-                    default=1,
-                    help='Number of processes for data loading.')
+                    default=512,
+                    help='Image height.')
+parser.add_argument('--width',dest='width',
+                    action='store',
+                    type=int,
+                    default=512,
+                    help='Width.')
 
 args = parser.parse_args()
 
-h,w,extra = 512,512,128
+try:
+    os.makedirs(args.output_path)
+except:
+    pass
+
+h,w = args.height,args.width
 n_i = 1
 inputs = tf.placeholder(tf.uint8,
-                        [None,h+extra,w+extra,3],
+                        [None,h,w,3],
                         name='Input_Tensor')
 inputs = tf.image.convert_image_dtype(inputs,tf.float32)
 
@@ -185,78 +200,47 @@ for i in range(n_i):
 
 prediction_network = tf.concat(prediction_network_,axis=0)
 
-igwq = ImageGeneratorWithQueue(args.slide_path,args.csv_path,
-                               extra_padding=extra//2,
-                               maxsize=args.n_processes_data)
-igwq.start()
-
 saver = tf.train.Saver()
 X = []
 Y = []
-F = h5py.File(args.output_path,mode='w')
 N = 0
 i = 0
 times = []
 Centers = {}
+x_coords = [item for sublist in args.x for item in sublist]
+y_coords = [item for sublist in args.y for item in sublist]
+slide_base = os.path.split(args.slide_path)[-1]
+
+OS = openslide.OpenSlide(args.slide_path)
 
 with tf.Session() as sess:
     saver.restore(sess,args.checkpoint_path)
     images = []
-    for image,coords in igwq.generate():
+    for X,Y in zip(x_coords,y_coords):
+        print(X,Y)
         i += 1
+        image = np.array(OS.read_region((X,Y),0,(h,w)))[:,:,:3]
         images.append(image)
         if len(images) == n_i:
             images = np.stack(images,axis=0)
-            A = time.time()
             segmented_images,images = sess.run(
                 [prediction_network,inputs],
                 feed_dict={'Input_Tensor:0':images})
             for image_idx in range(n_i):
                 image = images[image_idx,:,:,:]
                 segmented_image = segmented_images[image_idx,:,:,:]
+                output_image = np.zeros(image.shape[:2])
                 for obj in refine_prediction_characterise(
                         image,segmented_image):
                     y,x = obj['x'],obj['y']
-                    if np.any([
-                            x.min() == 0,
-                            x.max() == (h+extra),
-                            y.min() == 0,
-                            y.max() == (w+extra)
-                    ]):
-                        pass
-                    else:
-                        features = []
-                        for k in MIA_FEATURES:
-                            features.append(obj[k])
-                        x += coords[0]
-                        y += coords[1]
-                        C = str([np.mean(x),np.mean(y)])
-                        if C not in Centers:
-                            Centers[C] = 1
-                            N += 1
-                            g = F.create_group(str(C))
-                            g.create_dataset(
-                                "X",x.shape,dtype=np.int32,data=x)
-                            g.create_dataset(
-                                "Y",y.shape,dtype=np.int32,data=y)
-                            g.create_dataset(
-                                "features",[len(features)],
-                                dtype=np.float64,data=features)
-            B = time.time()
-            times.append(B-A)
-            images = []
-        if i % 100 == 0:
-            sys.stdout.write('Image {}. '.format(i))
-            sys.stdout.write(
-                'Av. time/image={:.3f}s '.format(
-                    float(np.mean(times))/n_i))
-            sys.stdout.write(
-                '(for last 100 images={:.3f}s); '.format(
-                    float(np.mean(times[-100:]))/n_i))
-            sys.stdout.write(
-                'No. detected cells={}'.format(N))
-            sys.stdout.write('\n')
+                    output_image[y,x] = 255
+                Image.fromarray(np.uint8(output_image)).save(
+                    '{}/{}_{}_{}_{}_{}_prediction.png'.format(
+                        args.output_path,slide_base,X,Y,h,w)
+                )
+                Image.fromarray(np.uint8(image*255)).save(
+                    '{}/{}_{}_{}_{}_{}_original.png'.format(
+                        args.output_path,slide_base,X,Y,h,w)
+                )
 
-F.attrs['NCells'] = N
-F.attrs['NImages'] = i
-F.close()
+            images = []

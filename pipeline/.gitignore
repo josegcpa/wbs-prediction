@@ -11,3 +11,4 @@ run_all.sh
 submit_all_no_check.sh
 submit_all_no_gpu.sh
 config
+tmp_images
