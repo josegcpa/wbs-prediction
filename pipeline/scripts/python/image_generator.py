@@ -31,6 +31,7 @@ def image_generator(quality_csv_path,slide_path,extra_padding=128):
             image = np.array(image)[:,:,:3]
             yield image,[x,y]
         except OpenSlideError as error:
+            OS = openslide.OpenSlide(slide_path)
             pass
 
 def image_generator_slide(slide_path,
@@ -45,6 +46,7 @@ def image_generator_slide(slide_path,
                 im = im[:,:,:3]
                 yield im,'{},{}'.format(x,y)
             except OpenSlideError as error:
+                OS = openslide.OpenSlide(slide_path)
                 pass
 
 class ImageGeneratorWithQueue:

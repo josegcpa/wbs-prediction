@@ -18,8 +18,8 @@ import openslide
 
 from image_generator import ImageGeneratorWithQueue
 
-height = 1024
-width = 1024
+height = 512
+width = 512
 n_channels = 3
 
 csv_path = sys.argv[1]
