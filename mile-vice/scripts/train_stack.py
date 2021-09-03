@@ -67,6 +67,10 @@ if __name__ == "__main__":
                         action='store',
                         type=int,
                         default=1)
+    parser.add_argument('--excluded_ids',dest='excluded_ids',
+                        action='store',nargs='+',
+                        type=str,
+                        default=[])
 
     args = parser.parse_args()
 
@@ -75,6 +79,7 @@ if __name__ == "__main__":
     else:
           dev = "cpu"
     print(dev)
+
     all_datasets = [GenerateFromDataset(x) for x in args.dataset_path]
     if args.other_dataset_path is not None:
         all_other_datasets = [CSVDataset(x,handle_nans='remove')
@@ -109,6 +114,7 @@ if __name__ == "__main__":
         all_sets.extend(all_other_datasets_keys)
     all_sets.append(all_lists['keys'])
     all_keys = list(set.intersection(*all_sets))
+    all_keys = [k for k in all_keys if k not in args.excluded_ids]
     all_mc = [all_lists['multiclass'][k] for k in all_keys]
     SF = StratifiedKFold(args.n_folds,shuffle=True,
                          random_state=args.random_state)
@@ -335,6 +341,8 @@ if __name__ == "__main__":
 
             state_dict[fold]['means'] = []
             state_dict[fold]['stds'] = []
+            state_dict[fold]['training_set'] = training_set
+            state_dict[fold]['testing_set'] = testing_set
             for D in all_datasets:
                 state_dict[fold]['means'].append(D.mean)
                 state_dict[fold]['stds'].append(D.std)
