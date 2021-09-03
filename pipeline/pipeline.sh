@@ -13,5 +13,5 @@ snakemake \
     --jobs 2 \
     -k \
     -p \
-     --cluster 'bsub -e logs/{params.log_id}.e -o logs/{params.log_id}.o -M 16000 -n 16' \
+     --cluster 'bsub -e logs/{params.log_id}.e -o logs/{params.log_id}.o -M {params.n_cores} -n {params.mem}' \
     --rerun-incomplete $5

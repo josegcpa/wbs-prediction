@@ -17,7 +17,8 @@ for folder in ['_quality_control',
     except:
         pass
 
-localrules: all, quality_control,segment_characterise_wbc
+#localrules: all, quality_control, segment_characterise_wbc
+localrules: all, quality_control, segment_characterise_wbc, aggregate_wbc
 
 rule all:
     input:
@@ -25,7 +26,6 @@ rule all:
         "{}/_aggregates_wbc/{}.h5".format(output_path,slide_id),
         "{}/_checkpoints/{}_agg_wbc".format(output_path,slide_id),
         "{}/_checkpoints/{}_agg_rbc".format(output_path,slide_id)
-
 
 rule quality_control:
     input:
@@ -54,7 +54,9 @@ rule segment_characterise_rbc:
     message:
         "Segmenting RBC."
     params:
-        log_id="RBC_SEGMENTATION_{}".format(slide_id)
+        log_id="RBC_SEGMENTATION_{}".format(slide_id),
+        n_cores=16,
+        mem=16000
     shell:
         """
         python3 scripts/python/segment_slide_rbc.py \
@@ -98,7 +100,9 @@ rule aggregate_rbc:
     message:
         "Aggregating RBC."
     params:
-        log_id="RBC_AGGREGATION_{}".format(slide_id)
+        log_id="RBC_AGGREGATION_{}".format(slide_id),
+        n_cores=2,
+        mem=8000
     shell:
         """
         python3 scripts/python/aggregate_hdf5.py \
@@ -117,7 +121,9 @@ rule aggregate_wbc:
     message:
         "Aggregating WBC."
     params:
-        log_id="WBC_AGGREGATION_{}".format(slide_id)
+        log_id="WBC_AGGREGATION_{}".format(slide_id),
+        n_cores=2,
+        mem=8000
     shell:
         """
         python3 scripts/python/aggregate_hdf5_with_nucleus.py \

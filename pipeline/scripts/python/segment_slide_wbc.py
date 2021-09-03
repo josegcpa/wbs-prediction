@@ -89,12 +89,12 @@ def refine_prediction_characterise(image,mask):
         np.uint8(mask_binary_holes))
 
     for i in range(1,num_labels):
-        #try:
+        try:
             features = characterise_cell([image,labels_im,i])
             if features is not None:
                 yield features
-        #except:
-        #    pass
+        except:
+            pass
 
 parser = argparse.ArgumentParser(
       prog = 'u-net.py',
@@ -185,10 +185,14 @@ for i in range(n_i):
 
 prediction_network = tf.concat(prediction_network_,axis=0)
 
+print('####'*100)
+
 igwq = ImageGeneratorWithQueue(args.slide_path,args.csv_path,
                                extra_padding=extra//2,
                                maxsize=args.n_processes_data)
 igwq.start()
+
+print('****'*100)
 
 saver = tf.train.Saver()
 X = []
