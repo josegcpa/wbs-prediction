@@ -9,13 +9,6 @@ library(WRS2)
 library(umap)
 library(ggpubr)
 
-poor_quality_slides <- c(
-  "SRSF2_10", # the whole slide is practically blurred
-  "II_26","VII_11","VIII_10",
-  "VIII_21","X_9","X_11","XV_11",
-  "XV_19","XVII_1","XVII_3","XVII_9"
-)
-
 all_conditions <- rbind(
   read_csv(
     "data/all_classes.csv",progress = F,
@@ -103,12 +96,19 @@ rbind(cbind(rbc_counts,cell_type = "RBC"),
       cbind(wbc_counts,cell_type = "WBC")) %>% 
   merge(all_conditions,by = "slide_id") %>% 
   ggplot(aes(x = coarse_class,y = counts,colour = fine_class,
-             shape = dataset)) + 
-  geom_point(position = position_jitter(width = 0.3,seed = 42,height = 0),size = 0.25,alpha = 0.8) + 
-  stat_summary(geom = "linerange",fun.data = median_hilow,size = 0.5,
-               colour = "goldenrod",position = position_dodge(0.3)) +
-  stat_summary(geom = "point",fun.data = function(x) return(c(y = median(x))),size = 1,
-               colour = "goldenrod",position = position_dodge(0.3)) +
+             shape = dataset,group = dataset)) + 
+  geom_point(position = position_jitterdodge(
+    jitter.width = 0.4,seed = 42,jitter.height = 0,dodge.width = 0.5),
+    size = 0.25,alpha = 0.5) + 
+  stat_summary(geom = "errorbar",
+               fun.data = function(x) return(data.frame(ymin = quantile(x,0.25),ymax = quantile(x,0.75))),
+               size = 0.4,colour = "black",position = position_dodge(0.5),width = 0.2,
+               alpha = 0.7) +
+  stat_summary(geom = "point",
+               fun.data = function(x) return(c(y = median(x))),
+               size = 1.5,
+               colour = "black",position = position_dodge(0.5),
+               alpha = 0.7) +
   scale_y_continuous(trans = 'log10',
                      breaks = c(10,100,1000,10000,100000),
                      labels = scientific) + 
@@ -170,8 +170,6 @@ tmp %>%
   xlab("Detected WBC (per tile)") + 
   ylab("WBC (g/dL)") +
   ggsave("figures/wbc-density-concentration.pdf",height = 1.5,width = 1.7) 
-
-
 
 # feature distribution per condition (wbc) --------------------------------
 
@@ -323,16 +321,6 @@ for (feature in kt_values_df$feature) {
 dt_values_mean_df <- do.call(rbind,dt_values_mean)
 dt_values_var_df <- do.call(rbind,dt_values_var)
 
-rbind(dt_values_mean_df,
-      dt_values_var_df) %>% 
-  mutate(adj.p.value = p.adjust(p.value,method = "BH")) %>%
-  group_by(feature,comparisons) %>% 
-  filter(adj.p.value == min(adj.p.value)) %>%
-  group_by(comparisons) %>%
-  summarise(N_features = sum(adj.p.value < 0.05)) %>%
-  arrange(N_features) %>%
-  mutate(Proportion = N_features / 60)
-
 dt_values_mean_df %>%
   group_by(comparisons) %>%
   summarise(N_features = sum(p.adjust(p.value,method = "BH") < 0.05)) %>%
@@ -419,6 +407,15 @@ wbc_all_cells_summaries %>%
   rotate_x_text(angle = 40) +
   ggsave("figures/wbc-feature-distribution-subset-var.pdf",height = 1.7,width = 4) 
 
+rbind(dt_values_mean_df,
+      dt_values_var_df) %>% 
+  mutate(adj.p.value = p.adjust(p.value,method = "BH")) %>%
+  group_by(feature,comparisons) %>% 
+  filter(adj.p.value == min(adj.p.value)) %>%
+  group_by(comparisons) %>%
+  summarise(N_features = sum(adj.p.value < 0.05)) %>%
+  arrange(N_features) %>%
+  mutate(Proportion = N_features / length(unique(dt_values_mean_df$feature)))
 
 # feature distribution per condition (rbc) --------------------------------
 
@@ -570,16 +567,6 @@ for (feature in kt_values_df$feature) {
 dt_values_mean_df <- do.call(rbind,dt_values_mean)
 dt_values_var_df <- do.call(rbind,dt_values_var)
 
-rbind(dt_values_mean_df,
-      dt_values_var_df) %>% 
-  mutate(adj.p.value = p.adjust(p.value,method = "BH")) %>%
-  group_by(feature,comparisons) %>% 
-  filter(adj.p.value == min(adj.p.value)) %>%
-  group_by(comparisons) %>%
-  summarise(N_features = sum(adj.p.value < 0.05)) %>%
-  arrange(N_features) %>%
-  mutate(Proportion = N_features / 60)
-
 dt_values_mean_df %>%
   group_by(comparisons) %>%
   summarise(N_features = sum(p.adjust(p.value,method = "BH") < 0.05)) %>%
@@ -666,10 +653,15 @@ rbc_all_cells_summaries %>%
   rotate_x_text(angle = 40) +
   ggsave("figures/rbc-feature-distribution-subset-var.pdf",height = 1.7,width = 4) 
 
-
-
-
-
+rbind(dt_values_mean_df,
+      dt_values_var_df) %>% 
+  mutate(adj.p.value = p.adjust(p.value,method = "BH")) %>%
+  group_by(feature,comparisons) %>% 
+  filter(adj.p.value == min(adj.p.value)) %>%
+  group_by(comparisons) %>%
+  summarise(N_features = sum(adj.p.value < 0.05)) %>%
+  arrange(N_features) %>%
+  mutate(Proportion = N_features / length(unique(dt_values_mean_df$feature)))
 
 
 

@@ -5,6 +5,13 @@ library(tidyverse)
 
 # constants ---------------------------------------------------------------
 
+poor_quality_slides <- c(
+  "SRSF2_10", # the whole slide is practically blurred
+  "II_26","VII_11","VIII_10",
+  "VIII_21","X_9","X_11","XV_11",
+  "XV_19","XVII_1","XVII_3","XVII_9"
+)
+
 class_conversion <- c(
   normal = "Normal",
   mds = "MDS",
