@@ -11,3 +11,4 @@ scripts/__pycache__
 *pdf
 csv_generator.py
 best_models
+excluded_ids
