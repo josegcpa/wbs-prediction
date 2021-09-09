@@ -15,10 +15,3 @@ python3 $NET_PATH\
   N\
   False\
   2
-
-#python3 $NET_PATH\
-#  $CKPT_PATH\
-#  $SLIDE_PATH\
-#  128\
-#  False\
-#  2

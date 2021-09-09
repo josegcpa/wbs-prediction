@@ -1,7 +1,7 @@
 import os
 from glob import glob
 
-all_csv_files = glob('logs/multi_objective*o')
+all_csv_files = glob('logs/cv_multi_objective*o')
 
 all_metrics = {}
 

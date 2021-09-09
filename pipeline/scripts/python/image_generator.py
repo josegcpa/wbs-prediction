@@ -11,7 +11,7 @@ def image_generator(quality_csv_path,slide_path,extra_padding=128):
         negatives = []
         for line in lines:
             data = line.split(',')
-            if float(data[-1]) > 0.4:
+            if float(data[-1]) >= 0.5:
                 positives.append([int(data[1]),int(data[2])])
             else:
                 negatives.append([int(data[1]),int(data[2])])

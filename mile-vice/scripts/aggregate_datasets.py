@@ -14,8 +14,7 @@ dataset_folders = [
     '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_wbc',
     '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_rbc',
     '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS/_aggregates_rbc'
-]
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS/_aggregates_rbc']
 
 dataset_output = [
     'datasets/wbc.h5',

@@ -8,6 +8,11 @@ qc_ckpt = config['qc_ckpt']
 
 slide_id = slide_path.split('/')[-1].split('.')[0]
 
+try:
+    os.makedirs(output_path)
+else:
+    pass
+
 for folder in ['_quality_control',
                '_segmented_wbc','_segmented_rbc',
                '_aggregates_wbc','_aggregates_rbc',

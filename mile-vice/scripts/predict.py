@@ -1,4 +1,3 @@
-print('-'*20)
 import argparse
 import sys
 import torch
@@ -14,7 +13,6 @@ from data_generator import *
 from metrics import *
 
 if __name__ == "__main__":
-    print("Reading cmd line arguments...")
     parser = argparse.ArgumentParser(description='Test virtual cell classifier.')
 
     parser.add_argument('--slide_path',dest='slide_path',
@@ -110,7 +108,8 @@ if __name__ == "__main__":
     slide = openslide.OpenSlide(args.slide_path)
     aggregates = [h5py.File(x,'r') for x in args.aggregates_path]
     segmentations = [h5py.File(x,'r') for x in args.segmented_path]
-    output = h5py.File(args.output_path,'w')
+    if args.complete_summary == True:
+        output = h5py.File(args.output_path,'w')
 
     # get data from cell collections here
     all_cell_sets = []
@@ -140,7 +139,7 @@ if __name__ == "__main__":
             a = all_sizes[0] * subset
             for cell_idx in subset_dict[s]:
                 cell = aggregate['cells'][str(subset)][cell_idx,:]
-                if args.complete_summary:
+                if args.complete_summary == True:
                     i = cell_idx + a
                     cell_center = aggregate['cell_centers'][i]
                     cell_coordinates = segmentation[cell_center]
@@ -175,4 +174,4 @@ if __name__ == "__main__":
     for i in range(len(final_layers)):
         prediction = stacked_network([all_cell_sets,other_datasets],i)
         l = state_dict['args'].labels_path[i]
-        print(l + ',' + ','.join([str(x) for x in prediction.detach().cpu().numpy().squeeze()]))
+        print(args.dataset_id+','+l+',' + ','.join([str(x) for x in prediction.detach().cpu().numpy().squeeze()]))
