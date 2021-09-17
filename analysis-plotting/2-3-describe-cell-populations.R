@@ -38,9 +38,6 @@ blood_parameters <- read_csv(
     hb_g_dl = col_double(),plt_ul = col_double())) %>%
   select(slide_id = id,wbc_ul,hb_g_dl,plt_ul)
 
-
-
-
 # cell counts -------------------------------------------------------------
 
 qc_count <- read_csv("../mile-vice/data_output/qc_count.csv",
@@ -88,9 +85,6 @@ wbc_counts <-  rbind(
   subset(!(slide_id %in% poor_quality_slides)) %>%
   group_by(slide_id,dataset) %>%
   summarise(counts = sum(counts))
-
-range(wbc_counts$counts)
-range(rbc_counts$counts)
 
 rbind(cbind(rbc_counts,cell_type = "RBC"),
       cbind(wbc_counts,cell_type = "WBC")) %>% 
@@ -144,8 +138,8 @@ merge(select(rbc_counts,slide_id,dataset,rbc = counts),
         legend.title = element_blank()) + 
   ggsave("figures/no-of-cells-scatter.pdf",height = 1.5,width = 2.5) 
 
-
-
+range(wbc_counts$counts)
+range(rbc_counts$counts)
 
 # density to feature ------------------------------------------------------
 
@@ -367,7 +361,7 @@ dt_values_var_df %>%
   rotate_x_text(angle = 20) +
   ggsave("figures/wbc-feature-significant-dunn-heatmap-var.pdf",height = 2,width = 2.5) 
 
-wbc_all_cells_summaries %>%
+wbc_mean_plot <- wbc_all_cells_summaries %>%
   subset(key %in% kt_values_df_mean$feature[1:4]) %>%
   mutate(key = factor(key,levels = kt_values_df_mean$feature[1:3])) %>% 
   group_by(features) %>%
@@ -387,7 +381,7 @@ wbc_all_cells_summaries %>%
   rotate_x_text(angle = 40) +
   ggsave("figures/wbc-feature-distribution-subset.pdf",height = 1.7,width = 4) 
 
-wbc_all_cells_summaries %>%
+wbc_var_plot <- wbc_all_cells_summaries %>%
   subset(key %in% kt_values_df_var$feature[1:4]) %>%
   mutate(key = factor(key,levels = kt_values_df_var$feature[1:3])) %>% 
   group_by(features) %>%
@@ -613,7 +607,7 @@ dt_values_var_df %>%
   rotate_x_text(angle = 20) +
   ggsave("figures/rbc-feature-significant-dunn-heatmap-var.pdf",height = 2,width = 2.5) 
 
-rbc_all_cells_summaries %>%
+rbc_mean_plot <- rbc_all_cells_summaries %>%
   subset(key %in% kt_values_df_mean$feature[1:4]) %>%
   mutate(key = factor(key,levels = kt_values_df_mean$feature[1:3])) %>% 
   group_by(features) %>%
@@ -633,7 +627,7 @@ rbc_all_cells_summaries %>%
   rotate_x_text(angle = 40) +
   ggsave("figures/rbc-feature-distribution-subset.pdf",height = 1.7,width = 4) 
 
-rbc_all_cells_summaries %>%
+rbc_var_plot <- rbc_all_cells_summaries %>%
   subset(key %in% kt_values_df_var$feature[1:4]) %>%
   mutate(key = factor(key,levels = kt_values_df_var$feature[1:3])) %>% 
   group_by(features) %>%
@@ -653,7 +647,7 @@ rbc_all_cells_summaries %>%
   rotate_x_text(angle = 40) +
   ggsave("figures/rbc-feature-distribution-subset-var.pdf",height = 1.7,width = 4) 
 
-rbind(dt_values_mean_df,
+ rbind(dt_values_mean_df,
       dt_values_var_df) %>% 
   mutate(adj.p.value = p.adjust(p.value,method = "BH")) %>%
   group_by(feature,comparisons) %>% 
@@ -663,63 +657,17 @@ rbind(dt_values_mean_df,
   arrange(N_features) %>%
   mutate(Proportion = N_features / length(unique(dt_values_mean_df$feature)))
 
+# big image (wbc + rbc) ---------------------------------------------------
 
+LL <- get_legend(wbc_mean_plot)
 
-
-# u-map (not used for now) ------------------------------------------------
-
-# wbc_all_cells <- read_csv(
-#   "../mile-vice/data_output/wbc_all_cells.csv",
-#   col_names = c("slide_id",features_all,features_nuclear),
-#   col_types = c(list(col_character()),replicate(length(c(features_all,features_nuclear)),col_double()))) %>%
-#   merge(all_conditions,by = "slide_id")
-# 
-# rbc_all_cells <- read_csv(
-#   "../mile-vice/data_output/rbc_all_cells.csv",
-#   col_names = c("slide_id",features_all),
-#   col_types = c(list(col_character()),replicate(length(features_all),col_double()))) %>%
-#   merge(all_conditions,by = "slide_id")
-# 
-# set.seed(42)
-# wbc_subsample <- sample.int(nrow(wbc_all_cells),size = 10000,replace = F)
-# wbc_tsne <- umap(wbc_all_cells[wbc_subsample,-c(1,62,63)],
-#                  verbose=T,
-#                  random_state=42)
-# 
-# cbind(data.frame(wbc_tsne$layout),
-#       coarse_class = wbc_all_cells$coarse_class[wbc_subsample],
-#       fine_class = wbc_all_cells$fine_class[wbc_subsample]) %>%
-#   ggplot(aes(x = X1,y = X2)) + 
-#   geom_density2d(colour = "black") +
-#   geom_point(alpha = 0.1,size = 0.25,aes(colour = fine_class)) + 
-#   scale_colour_manual(values = fine_colours,name = NULL) +
-#   theme_pretty(base_size = 6) +
-#   xlab("UMAP 1") +
-#   ylab("UMAP 2") +
-#   facet_wrap(~ coarse_class) +
-#   theme(legend.position = "bottom",
-#         legend.key.size = unit(0,"cm")) + 
-#   ggsave("figures/tsne-wbc.pdf",height = 2,width = 5) 
-# 
-# rbc_subsample <- sample.int(nrow(wbc_all_cells),size = 10000,replace = F)
-# rbc_tsne <- umap(rbc_all_cells[rbc_subsample,-c(1,44,45)],
-#                  verbose=T,
-#                  random_state=42,
-#                  spread = 0.2)
-# 
-# cbind(data.frame(rbc_tsne$layout),
-#       coarse_class = rbc_all_cells$coarse_class[rbc_subsample],
-#       fine_class = rbc_all_cells$fine_class[rbc_subsample]) %>%
-#   ggplot(aes(x = X1,y = X2)) + 
-#   geom_density2d(colour = "black") +
-#   geom_point(alpha = 0.1,size = 0.25,aes(colour = fine_class)) + 
-#   scale_colour_manual(values = fine_colours,name = NULL) +
-#   theme_pretty(base_size = 6) +
-#   xlab("UMAP 1") +
-#   ylab("UMAP 2") +
-#   facet_wrap(~ coarse_class) +
-#   theme(legend.position = "bottom",
-#         legend.key.size = unit(0,"cm")) + 
-#   ggsave("figures/tsne-rbc.pdf",height = 2,width = 5) 
-# 
-# 
+plot_grid(
+  wbc_mean_plot + theme(legend.position = "none"),
+  wbc_var_plot + theme(legend.position = "none"),
+  rbc_mean_plot + theme(legend.position = "none"),
+  rbc_var_plot + theme(legend.position = "none"),
+  LL,
+  ncol = 1,
+  rel_heights = c(1,1,1,1,0.2)
+) + 
+  ggsave("figures/dunn-bonferroni-wbc-rbc.pdf",height = 6,width = 4) 

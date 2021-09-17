@@ -7,6 +7,8 @@ library(tidyverse)
 library(ggplot2)
 library(ggsci)
 
+margin <- ggplot2::margin
+
 dataset_conversion <- list(
   train = c(
     ADDENBROOKES = "AC1",
@@ -20,10 +22,18 @@ dataset_conversion <- list(
 
 # plotting ----------------------------------------------------------------
 
-data <- read_csv("data/test_results_unet_full.csv") %>%
+data <- read_csv("data/test_results_unet_full_.csv") %>%
   subset(SAE == FALSE & TRANSFORMED == F) %>%
   select(-SAE,-TRANSFORMED)
 
+data_ac2 <- rbind(
+  read_csv("data/test_results_unet_adden_2.csv",
+           col_names = c("Set","Metric","Metric_desc","value")) %>%
+    mutate(model = "Trained on AC1"),
+  read_csv("data/test_results_unet_adden_2_ft.csv",
+           col_names = c("Set","Metric","Metric_desc","value")) %>%
+    mutate(model = "Trained on AC1,\nfinetuned on AC2")
+)
 
 data %>%
   mutate(TRAIN_DATASET = dataset_conversion$train[TRAIN_DATASET],
@@ -38,7 +48,7 @@ data %>%
   geom_bar(stat = "identity",position = "dodge",colour = "black",size = 0.25) + 
   facet_wrap(~ FINETUNE + DEPTH,ncol = 4) + 
   scale_y_continuous(expand = c(0,0),breaks = seq(0,1,by = 0.1)) + 
-  coord_cartesian(ylim = c(0.8,1.0)) +
+  coord_cartesian(ylim = c(0.6,1.0)) +
   theme_pretty(base_size = 6) + 
   xlab("Testing set") +
   ylab("Jaccard index") + 
@@ -89,7 +99,7 @@ data %>%
   geom_bar(stat = "identity",position = "dodge",colour = "black",size = 0.25) + 
   facet_wrap(~ FINETUNE) + 
   scale_y_continuous(expand = c(0,0),breaks = seq(0,1,by = 0.1)) + 
-  coord_cartesian(ylim = c(0.8,1.0)) +
+  coord_cartesian(ylim = c(0.7,1.0)) +
   theme_pretty(base_size = 6) + 
   xlab("Testing set") +
   ylab("Jaccard index") + 
@@ -98,3 +108,20 @@ data %>%
         legend.key.size = unit(0.1,"cm"),
         strip.text = element_text(margin = margin(t = 2))) +
   ggsave("figures/u-net-metrics.pdf",height = 2.1,width = 1.6) 
+
+data_ac2 %>% 
+  subset(Metric == "IOU" & Metric_desc == "global") %>%
+  ggplot(aes(x = model,y = value)) + 
+  geom_bar(stat = "identity",position = "dodge",fill = "black",colour = NA,size = 0.25) + 
+  scale_y_continuous(expand = c(0,0),labels = function(x) sprintf("%.1f%%",x*100),
+                     breaks = c(0.845,0.85)) + 
+  theme_pretty(base_size = 6) + 
+  ylab("Jaccard index") + 
+  scale_fill_aaas(name = "Test-time data\naugmentation") + 
+  theme(legend.position = "bottom",
+        legend.key.size = unit(0.1,"cm"),
+        axis.title.y = element_blank(),
+        strip.text = element_text(margin = margin(t = 2))) +
+  coord_flip(ylim = c(0.845,0.85)) +
+  ggsave("figures/u-net-metrics-ac2.pdf",height = 0.7,width = 1.25) 
+

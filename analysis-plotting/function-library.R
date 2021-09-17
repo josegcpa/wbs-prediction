@@ -2,6 +2,11 @@
 
 library(ggplot2)
 library(tidyverse)
+library(ggsci)
+
+ggsave <- function(...) {
+  return(ggplot2::ggsave(useDingbats = F,...))
+}
 
 # constants ---------------------------------------------------------------
 
@@ -151,3 +156,8 @@ theme_pretty <- function(...) {
 scientific <- function(x){
   ifelse(x==0 | x == 0.5, x, parse(text=gsub("[+]", "", gsub("[0-9]e", "10^", scales::scientific_format()(x)))))
 }
+
+# create-directories ------------------------------------------------------
+
+dir.create("figures/",showWarnings = F)
+dir.create("data_output/",showWarnings = F)
