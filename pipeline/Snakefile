@@ -10,7 +10,7 @@ slide_id = slide_path.split('/')[-1].split('.')[0]
 
 try:
     os.makedirs(output_path)
-else:
+except:
     pass
 
 for folder in ['_quality_control',
@@ -23,7 +23,8 @@ for folder in ['_quality_control',
         pass
 
 #localrules: all, quality_control, segment_characterise_wbc
-localrules: all, quality_control, segment_characterise_wbc, aggregate_wbc
+#localrules: all, quality_control, segment_characterise_wbc, aggregate_wbc
+localrules: all, quality_control, segment_characterise_wbc, aggregate_wbc, segment_characterise_rbc, aggregate_rbc
 
 rule all:
     input:
@@ -68,7 +69,7 @@ rule segment_characterise_rbc:
             --csv_path {input.qc_out} \
             --slide_path {input.slide_path} \
             --output_path {output.seg} \
-            --n_processes_analysis 8 \
+            --n_processes_analysis 4 \
             --n_processes_data 2 && touch {output.checkpoint_seg_rbc}
         """
 
@@ -92,7 +93,7 @@ rule segment_characterise_wbc:
             --checkpoint_path {params.unet_ckpt} \
             --depth 0.25 \
             --output_path {output.seg} \
-            --n_processes_data 16 && touch {output.checkpoint_seg_wbc}
+            --n_processes_data 8 && touch {output.checkpoint_seg_wbc}
         """
 
 rule aggregate_rbc:

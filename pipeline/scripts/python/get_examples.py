@@ -1,4 +1,3 @@
-print('-'*20)
 import argparse
 import sys
 import psutil
@@ -10,7 +9,6 @@ import openslide
 import re
 
 if __name__ == "__main__":
-    print("Reading cmd line arguments...")
     parser = argparse.ArgumentParser(description='Get cell examples.')
 
     parser.add_argument('--slide_path',dest='slide_path',

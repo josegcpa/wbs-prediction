@@ -235,8 +235,9 @@ with tf.Session() as sess:
                         x += coords[0]
                         y += coords[1]
                         C = str([np.mean(x),np.mean(y)])
-                        if C not in Centers:
-                            Centers[C] = 1
+                        C_dict = str([int(np.mean(x)/8),int(np.mean(y)/8)])
+                        if C_dict not in Centers:
+                            Centers[C_dict] = 1
                             N += 1
                             g = F.create_group(str(C))
                             g.create_dataset(

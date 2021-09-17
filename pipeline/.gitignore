@@ -12,3 +12,6 @@ submit_all_no_check.sh
 submit_all_no_gpu.sh
 config
 tmp_images
+examples
+images_from_examples
+pipeline-venv
