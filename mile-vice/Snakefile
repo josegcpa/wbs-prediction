@@ -17,50 +17,8 @@ rule all:
             dataset=all_label_files,nvc=NVC),
         expand("models/cv.{dataset}.{nvc}.bc",
             dataset=all_label_files,nvc=NVC),
-        expand("models/cv.{dataset}.{nvc}.bc.dem",
-            dataset=all_label_files,nvc=NVC),
         expand("models/cv.multi_objective.{nvc}",nvc=NVC_MO),
-        expand("models/cv.multi_objective.{nvc}.bc.dem",nvc=NVC_MO)
-
-rule train_cells_bc_dem:
-    input:
-        RBC="datasets/rbc.h5",
-        WBC="datasets/wbc.h5",
-        BC="datasets/blood_counts_no_header.csv",
-        DEM="datasets/demographics_no_header.csv",
-        LABELS="labels/{dataset}.csv"
-
-    params:
-        nvc="{nvc}",
-        excluded_ids=excluded_ids,
-        lr=lr,
-        nsteps=NSTEPS,
-        nfolds=NFOLDS,
-        wd=WD,
-        log_id="{dataset}.0.001.{nvc}_bc_dem"
-
-    output:
-        "models/cv.{dataset}.{nvc}.bc.dem"
-
-    shell:
-        """
-        python3 scripts/train_stack.py \
-            --n_virtual_cells {params.nvc} \
-            --n_classes 2 \
-            --dataset_path {input.WBC} \
-            --dataset_path {input.RBC} \
-            --labels_path {input.LABELS} \
-            --number_of_steps {params.nsteps} \
-            --batch_size 32 \
-            --number_of_cells 1000 \
-            --learning_rate {params.lr} \
-            --n_folds {params.nfolds} \
-            --weight_decay {params.wd} \
-            --other_dataset_path {input.BC} \
-            --other_dataset_path {input.DEM} \
-            --model_path {output} \
-            --excluded_ids {params.excluded_ids}
-        """
+        expand("models/cv.multi_objective.{nvc}.bc",nvc=NVC_MO)
 
 rule train_cells_bc:
     input:
@@ -97,7 +55,8 @@ rule train_cells_bc:
             --weight_decay {params.wd} \
             --other_dataset_path {input.BC} \
             --model_path {output} \
-            --excluded_ids {params.excluded_ids}
+            --excluded_ids {params.excluded_ids} \
+            --min_cells 50
         """
 
 rule train_cells:
@@ -132,15 +91,15 @@ rule train_cells:
             --n_folds {params.nfolds} \
             --weight_decay {params.wd} \
             --model_path {output} \
-            --excluded_ids {params.excluded_ids}
+            --excluded_ids {params.excluded_ids} \
+            --min_cells 50
         """
 
-rule train_cells_multi_objective_bc_dem:
+rule train_cells_multi_objective_bc:
     input:
         RBC="datasets/rbc.h5",
         WBC="datasets/wbc.h5",
         BC="datasets/blood_counts_no_header.csv",
-        DEM="datasets/demographics_no_header.csv",
         LABELS_0="labels/{}.csv".format(all_label_files[0]),
         LABELS_1="labels/{}.csv".format(all_label_files[1]),
         LABELS_2="labels/{}.csv".format(all_label_files[2]),
@@ -153,10 +112,10 @@ rule train_cells_multi_objective_bc_dem:
         nsteps=NSTEPS,
         nfolds=NFOLDS,
         wd=WD,
-        log_id="multi_objective.0.001.{nvc}"
+        log_id="multi_objective.0.001.{nvc}.bc"
 
     output:
-        "models/cv.multi_objective.{nvc}.bc.dem"
+        "models/cv.multi_objective.{nvc,[0-9]+}.bc"
 
     shell:
         """
@@ -176,9 +135,9 @@ rule train_cells_multi_objective_bc_dem:
             --n_folds {params.nfolds} \
             --weight_decay {params.wd} \
             --other_dataset_path {input.BC} \
-            --other_dataset_path {input.DEM} \
             --model_path {output} \
-            --excluded_ids {params.excluded_ids}
+            --excluded_ids {params.excluded_ids} \
+            --min_cells 50
         """
 
 rule train_cells_multi_objective:
@@ -220,5 +179,6 @@ rule train_cells_multi_objective:
             --n_folds {params.nfolds} \
             --weight_decay {params.wd} \
             --model_path {output} \
-            --excluded_ids {params.excluded_ids}
+            --excluded_ids {params.excluded_ids} \
+            --min_cells 50
         """

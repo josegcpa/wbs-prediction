@@ -98,8 +98,9 @@ class QueueGenerator:
         return x
 
 class GenerateFromDataset:
-    def __init__(self,path,maxsize=1):
+    def __init__(self,path,maxsize=1,min_cells=None):
         self.maxsize = maxsize
+        self.min_cells = min_cells
         self.mean = None
         self.std = None
         self.path = path
@@ -114,7 +115,13 @@ class GenerateFromDataset:
         self.all_datasets = {}
         for k in self.keys:
             try:
-                self.all_datasets[k] = HDF5Dataset(self.dataset[k])
+                d = HDF5Dataset(self.dataset[k])
+                if self.min_cells:
+                    if d.n_cells >= args.min_cells:
+                        self.all_datasets[k] = d
+                    else: print("OY")
+                else:
+                    self.all_datasets[k] = d
             except:
                 pass
         self.keys = [x for x in self.all_datasets.keys()]

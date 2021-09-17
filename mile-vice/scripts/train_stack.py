@@ -71,6 +71,9 @@ if __name__ == "__main__":
                         action='store',nargs='+',
                         type=str,
                         default=[])
+    parser.add_argument('--min_cells',dest='min_cells',
+                        action='store',type=int,
+                        default=None)
 
     args = parser.parse_args()
 
@@ -123,6 +126,10 @@ if __name__ == "__main__":
 
     state_dict = {}
     state_dict['args'] = args
+
+    # used to calculated CV AUC
+    all_probs = [[] for l in args.labels_path]
+    all_classes = [[] for l in args.labels_path]
     for fold in range(args.n_folds):
         print("\tFold: {}".format(fold),file=sys.stderr)
         metrics_workhorse = MetricFunction(
@@ -221,7 +228,7 @@ if __name__ == "__main__":
             lll = loss.to('cpu').detach().numpy()
             loss_history.append(lll)
             schedule.step(lll)
-            if S % 50 == 0:
+            if S % 100 == 0:
                 stacked_network.train(False)
                 loss_acc = [torch.zeros([1])
                             for _ in range(len(all_lists['criterions']))]
@@ -323,6 +330,9 @@ if __name__ == "__main__":
                 truth_onehot = truth_onehot[:,1:]
                 output_onehot = output_onehot[:,1:]
                 output_prob = output_prob[:,1:]
+
+                all_probs[ob].append([float(x) for x in output_prob.cpu().detach().numpy()])
+                all_classes[ob].append([float(x) for x in truth_onehot.cpu().detach().numpy()])
             metrics_workhorse.update(
                 truth_onehot.to('cpu').detach(),
                 output_onehot.to('cpu').detach(),
@@ -350,5 +360,10 @@ if __name__ == "__main__":
                 for D in all_other_datasets:
                     state_dict[fold]['means'].append(D.mean)
                     state_dict[fold]['stds'].append(D.std)
+
+    for ob in range(len(all_probs)):
+        for fold_idx,(p,c) in enumerate(zip(all_probs[ob],all_classes[ob])):
+            for p_,c_ in zip(p,c):
+                print('PROBS_CLASS,{},{},{},{},{}'.format(fold_idx,ob,p_,c_,labels.unique_labels[int(c_)]))
     if args.model_path is not None:
         torch.save(state_dict,args.model_path)
