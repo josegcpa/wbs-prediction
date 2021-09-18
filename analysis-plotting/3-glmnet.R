@@ -19,12 +19,6 @@ library(RANN)
 select <- dplyr::select
 set.seed(42)
 
-get.coords.for.ggplot <- function(roc) {
-  # from pROC source code
-  df <- coords(roc, "all", transpose = FALSE)
-  return(df[rev(seq(nrow(df))),])
-}
-
 make_folds <- function(f,k=5) {
   f_idx <- seq(1,length(f))
   output_folds <- lapply(1:k,function(x) list(train = c(),test = c()))

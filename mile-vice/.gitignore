@@ -13,3 +13,5 @@ csv_generator.py
 best_models
 excluded_ids
 best_model_final_layers
+predictions
+best_models_mo

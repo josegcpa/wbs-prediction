@@ -34,7 +34,7 @@ rule train_cells_bc:
         nsteps=NSTEPS,
         nfolds=NFOLDS,
         wd=WD,
-        log_id="{dataset}.0.001.{nvc}_bc"
+        log_id="{dataset}.0.001.{nvc}.bc"
 
     output:
         "models/cv.{dataset}.{nvc}.bc"

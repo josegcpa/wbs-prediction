@@ -157,6 +157,12 @@ scientific <- function(x){
   ifelse(x==0 | x == 0.5, x, parse(text=gsub("[+]", "", gsub("[0-9]e", "10^", scales::scientific_format()(x)))))
 }
 
+get.coords.for.ggplot <- function(roc) {
+  # from pROC source code
+  df <- coords(roc, "all", transpose = FALSE)
+  return(df[rev(seq(nrow(df))),])
+}
+
 # create-directories ------------------------------------------------------
 
 dir.create("figures/",showWarnings = F)
