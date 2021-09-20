@@ -9,6 +9,13 @@ for F in all_csv_files:
     d = os.path.split(F)[-1].split('.')
     datasets = ['cells']
     name = d[0]
+
+    if 'subset' in name:
+        subset = "subset_features"
+    else:
+        subset = "all_features"
+    name = '_'.join([x for x in name.split('_') if x != 'subset'])
+
     if 'bc' in d[-2]:
         datasets.append('bc')
     if 'dem' in d[-2]:
@@ -21,7 +28,7 @@ for F in all_csv_files:
             if 'TRAIN' in line or 'TEST' in line:
                 tt,fold,metric = line.split(',')[0:3]
                 task = line.split(',')[-1]
-                line = '{},{},{}'.format(line,name,datasets)
+                line = '{},{},{},{}'.format(line,name,datasets,subset)
                 if task not in all_metrics[F][tt]:
                     all_metrics[F][tt][task] = {}
                 if fold not in all_metrics[F][tt][task]:

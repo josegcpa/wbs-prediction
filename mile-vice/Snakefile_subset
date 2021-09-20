@@ -2,8 +2,8 @@ NFOLDS=5
 NSTEPS=15000
 lr=0.001
 WD=0.005
-WBC_DATASET="datasets/wbc.h5"
-RBC_DATASET="datasets/rbc.h5"
+WBC_DATASET="datasets/wbc_subset.h5"
+RBC_DATASET="datasets/rbc_subset.h5"
 
 all_label_files= ["anemia_binary","binary","mds_binary","disease_binary"]
 all_class_n = [2,2,2,2]
@@ -16,12 +16,12 @@ with open("excluded_ids") as o:
 
 rule all:
     input:
-        expand("models/cv.{dataset}.{nvc}",
+        expand("models/cv_subset.{dataset}.{nvc}",
             dataset=all_label_files,nvc=NVC),
-        expand("models/cv.{dataset}.{nvc}.bc",
+        expand("models/cv_subset.{dataset}.{nvc}.bc",
             dataset=all_label_files,nvc=NVC),
-        expand("models/cv.multi_objective.{nvc}",nvc=NVC_MO),
-        expand("models/cv.multi_objective.{nvc}.bc",nvc=NVC_MO)
+        expand("models/cv_subset.multi_objective.{nvc}",nvc=NVC_MO),
+        expand("models/cv_subset.multi_objective.{nvc}.bc",nvc=NVC_MO)
 
 rule train_cells_bc:
     input:
@@ -37,11 +37,11 @@ rule train_cells_bc:
         nsteps=NSTEPS,
         nfolds=NFOLDS,
         wd=WD,
-        log_id="{dataset}.0.001.{nvc}.bc",
+        log_id="subset_{dataset}.0.001.{nvc}.bc",
         n_cells=N_CELLS
 
     output:
-        "models/cv.{dataset}.{nvc}.bc"
+        "models/cv_subset.{dataset}.{nvc,[0-9]+}.bc"
 
     shell:
         """
@@ -76,11 +76,11 @@ rule train_cells:
         nsteps=NSTEPS,
         nfolds=NFOLDS,
         wd=WD,
-        log_id="{dataset}.0.001.{nvc}",
+        log_id="subset_{dataset}.0.001.{nvc}",
         n_cells=N_CELLS
 
     output:
-        "models/cv.{dataset}.{nvc}"
+        "models/cv_subset.{dataset}.{nvc,[0-9]+}"
     shell:
         """
         python3 scripts/train_stack.py \
@@ -117,11 +117,11 @@ rule train_cells_multi_objective_bc:
         nsteps=NSTEPS,
         nfolds=NFOLDS,
         wd=WD,
-        log_id="multi_objective.0.001.{nvc}.bc",
+        log_id="subset_multi_objective.0.001.{nvc,[0-9]+}.bc",
         n_cells=N_CELLS
 
     output:
-        "models/cv.multi_objective.{nvc,[0-9]+}.bc"
+        "models/cv_subset.multi_objective.{nvc,[0-9]+}.bc"
 
     shell:
         """
@@ -149,7 +149,7 @@ rule train_cells_multi_objective_bc:
 rule train_cells_multi_objective:
     input:
         RBC=RBC_DATASET,
-        WBC=RBC_DATASET,
+        WBC=WBC_DATASET,
         LABELS_0="labels/{}.csv".format(all_label_files[0]),
         LABELS_1="labels/{}.csv".format(all_label_files[1]),
         LABELS_2="labels/{}.csv".format(all_label_files[2]),
@@ -162,11 +162,11 @@ rule train_cells_multi_objective:
         nsteps=NSTEPS,
         nfolds=NFOLDS,
         wd=WD,
-        log_id="multi_objective.0.001.{nvc}",
+        log_id="subset_multi_objective.0.001.{nvc}",
         n_cells=N_CELLS
 
     output:
-        "models/cv.multi_objective.{nvc,[0-9]+}"
+        "models/cv_subset.multi_objective.{nvc,[0-9]+}"
 
     shell:
         """

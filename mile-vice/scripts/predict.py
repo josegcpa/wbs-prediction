@@ -67,8 +67,7 @@ if __name__ == "__main__":
 
     n_od = len(args.other_datasets)
     n_d = len(args.aggregates_path)
-    # loading state dict and inferring network architecture from
-    # state dict
+    # loading state dict and inferring network architecture from it
     state_dict = torch.load(args.model_path,map_location='cpu')
     network_state_dict = state_dict[args.fold]['network']
 
@@ -97,6 +96,7 @@ if __name__ == "__main__":
         n_classes=n_classes).to(dev)
 
     stacked_network.load_state_dict(network_state_dict)
+    stacked_network.train(False)
 
     means = [np.squeeze(x) for x in state_dict[args.fold]['means']]
     stds = [np.squeeze(x) for x in state_dict[args.fold]['stds']]
@@ -170,8 +170,9 @@ if __name__ == "__main__":
     # get data from other datasets
     other_datasets = [torch.Tensor((CSVDataset(x)[[args.dataset_id]])).to(dev) for x in args.other_datasets]
     other_datasets = [(x-means_od[i])/stds_od[i] for i,x in enumerate(other_datasets)]
-    # predictions only happen here
+    # predict hereß
     for i in range(len(final_layers)):
         prediction = stacked_network([all_cell_sets,other_datasets],i)
         l = state_dict['args'].labels_path[i]
-        print(args.dataset_id+','+l+',' + ','.join([str(x) for x in prediction.detach().cpu().numpy().squeeze()]))
+        print(args.dataset_id + ',' + l + ',' + ','.join(
+            [str(x) for x in prediction.detach().cpu().numpy().squeeze()]))

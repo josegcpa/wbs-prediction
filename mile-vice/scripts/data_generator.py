@@ -5,13 +5,13 @@ import numpy as np
 from multiprocessing import Queue,Process
 
 class HDF5Dataset:
-    def __init__(self,F):
+    def __init__(self,F,feature_subset=None):
         self.F = F
         self.get_n_features()
         self.get_n_cells()
 
     def get_n_features(self):
-        self.n_features = len(self.F['mean'])
+        self.n_features = self.F['cells']['0'].shape[1]
 
     def get_n_cells(self):
         self.n_subsets = len(self.F['cells'])
@@ -98,7 +98,7 @@ class QueueGenerator:
         return x
 
 class GenerateFromDataset:
-    def __init__(self,path,maxsize=1,min_cells=None):
+    def __init__(self,path,maxsize=1,min_cells=None,feature_subset=None):
         self.maxsize = maxsize
         self.min_cells = min_cells
         self.mean = None
@@ -111,6 +111,9 @@ class GenerateFromDataset:
         self.n_features = self.all_datasets[self.keys[0]].n_features
         self.get_moments()
 
+    def __getitem__(self,idx):
+        return self.all_datasets[idx]
+
     def read_all_datasets(self):
         self.all_datasets = {}
         for k in self.keys:
@@ -119,7 +122,6 @@ class GenerateFromDataset:
                 if self.min_cells:
                     if d.n_cells >= args.min_cells:
                         self.all_datasets[k] = d
-                    else: print("OY")
                 else:
                     self.all_datasets[k] = d
             except:
