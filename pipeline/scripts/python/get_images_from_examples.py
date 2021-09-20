@@ -16,14 +16,14 @@ all_examples = glob("examples/*wbc.h5")
 mll_examples = [x for x in all_examples if re.search('.*[A-Z]+_[0-9]+_wbc',x)]
 adden_examples = [x for x in all_examples if not re.search('.*[A-Z]+_[0-9]+_wbc',x)]
 
-H,W = 200,100
-
 N = 20
+H,W = 210,105
 
 all_isolated_images_mll = []
 
 for file_path in mll_examples:
-    with h5py.File(file_path) as F:
+    
+    with h5py.File(file_path,"r") as F:
         root = file_path.split(os.sep)[-1]
         centers = []
         hists = []
@@ -56,8 +56,10 @@ for file_path in mll_examples:
                 except:
                     pass
 
+    output_image_path = "images_from_examples/MLL_wbc_{}.png".format(root)
+    if os.path.exists(output_image_path) == False:
         patch_work = patch_work[:(place_x_ + H),:]
-        Image.fromarray(patch_work).save("images_from_examples/MLL_wbc_{}.png".format(root))
+        Image.fromarray(patch_work).save(output_image_path)
 
 N = 25
 
@@ -86,13 +88,12 @@ for i,k in enumerate(isolated_images):
 Image.fromarray(patch_work).save('images_from_examples/MLL_wbc.png')
 
 N = 20
-
-H,W = 200,100
+H,W = 210,105
 
 all_isolated_images_adden = []
 
 for file_path in adden_examples:
-    with h5py.File(file_path) as F:
+    with h5py.File(file_path,"r") as F:
         centers = []
         hists = []
 
@@ -122,8 +123,10 @@ for file_path in adden_examples:
 
                 patch_work[place_x:(place_x+sh[0]),place_y:(place_y+sh[1])] = isolated_image
 
+    output_image_path = "images_from_examples/AC2_wbc_{}.png".format(root)
+    if os.path.exists(output_image_path) == False:
         patch_work = patch_work[:(place_x_ + H),:]
-        Image.fromarray(patch_work).save("images_from_examples/AC2_wbc_{}.png".format(root))
+        Image.fromarray(patch_work).save(output_image_path)
 
 N = 30
 
@@ -149,4 +152,4 @@ for i,k in enumerate(isolated_images):
 
     patch_work[place_x:(place_x+sh[0]),place_y:(place_y+sh[1])] = isolated_image
 
-iImage.fromarray(patch_work).save('images_from_examples/AC2_wbc.png')
+Image.fromarray(patch_work).save('images_from_examples/AC2_wbc.png')
