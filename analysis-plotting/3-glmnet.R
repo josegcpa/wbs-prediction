@@ -1,4 +1,4 @@
-# TODO: independent test cohort 
+# TODO: look at feature specific importances, get some examples, see how it goes
 
 # setup -------------------------------------------------------------------
 
@@ -767,7 +767,7 @@ feature_associations_df %>%
   theme(legend.key.size = unit(0,"cm")) + 
   ggsave("figures/compare-feature-imp-morphology.pdf",height=2.5,width=3)
 
-  feature_associations_df %>% 
+feature_associations_df %>% 
     subset(data_type == "full") %>% 
     ggplot(aes(x = glmnet,y = RRF,colour = cell_type,shape = moment)) +
     geom_point() + 
@@ -781,6 +781,35 @@ feature_associations_df %>%
     theme(legend.key.size = unit(0,"cm")) + 
     scale_x_continuous(breaks = c(0.0001,0.001,0.01,0.1,1),labels = c(0.1,1,10,100,1000),trans = 'log10') +
     ggsave("figures/compare-feature-imp-full.pdf",height=2.5,width=3)
+
+feature_no <- seq(1,length(features_conversion))
+names(feature_no) <- names(features_conversion)
+
+file_connection <- file("data_output/wbc_feature_subset")
+feature_associations_df %>% 
+  subset(glmnet > 0.001) %>%
+  subset(data_type == "full" & cell_type == "WBC") %>% 
+  select(features_raw) %>%
+  distinct %>%
+  mutate(features_raw = feature_no[features_raw]) %>%
+  unlist %>%
+  sort %>%
+  paste(collapse = ',') %>%
+  writeLines(file_connection)
+close(file_connection)
+
+file_connection <- file("data_output/rbc_feature_subset")
+feature_associations_df %>% 
+  subset(glmnet > 0.001) %>%
+  subset(data_type == "full" & cell_type == "RBC") %>% 
+  select(features_raw) %>%
+  distinct %>%
+  mutate(features_raw = feature_no[features_raw]) %>%
+  unlist %>%
+  sort %>%
+  paste(collapse = ',') %>%
+  writeLines(file_connection)
+close(file_connection)
 
 # feature group importance
 

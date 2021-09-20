@@ -1,5 +1,4 @@
 # TODO: independent validation cohort
-# TODO: save images and etc
 
 # setup -------------------------------------------------------------------
 
@@ -30,6 +29,54 @@ task_conversion_reverse <- names(task_conversion)
 names(task_conversion_reverse) <- task_conversion
 
 task_conversion_mo <- c("cv_anemia_binary","cv_binary","cv_mds_binary","cv_disease_binary")
+
+read_prediction <- function(file_path) {
+  read_csv(file_path,
+                col_names = c("slide_id","labels","p1","p2")) %>%
+    mutate(task = gsub(".csv","",gsub("labels/","",labels))) %>%
+    return
+}
+
+all_conditions <- rbind(
+  read_csv(
+    "data/all_classes.csv",progress = F,
+    col_types = c(col_character(),col_character(),col_character())) %>%
+    select(slide_id = id,fine_class,coarse_class) %>% 
+    mutate(fine_class = factor(fine_class_conversion[fine_class],fine_class_conversion),
+           coarse_class = factor(class_conversion[coarse_class],class_conversion)),
+  read_csv(
+    "data/all_classes_adden_1.csv",progress = F,
+    col_types = c(col_character(),col_character(),col_character())) %>%
+    select(slide_id,fine_class,coarse_class) %>% 
+    mutate(fine_class = factor(fine_class_conversion[fine_class],fine_class_conversion),
+           coarse_class = factor(class_conversion[coarse_class],class_conversion)) %>%
+    mutate(slide_id = gsub('\\.','',str_match(slide_id,'[0-9_-]+.'))),
+  read_csv(
+    "data/all_classes_adden_2.csv",progress = F,
+    col_types = c(col_character(),col_character(),col_character())) %>%
+    select(slide_id,fine_class,coarse_class) %>% 
+    mutate(fine_class = factor(fine_class_conversion[fine_class],fine_class_conversion),
+           coarse_class = factor(class_conversion[coarse_class],class_conversion))) %>%
+  mutate(fine_class = ifelse(fine_class == "SRSF2-mutant","Non-SF3B1-mutant",as.character(fine_class)))
+
+label_conversion <- list(
+  binary = c(
+    `Normal` = 0,
+    `SF3B1-mutant` = 1,`Non-SF3B1-mutant` = 1,
+    `Iron deficiency` = 1,`Megaloblastic` = 1),
+  disease_binary = c(
+    `Normal` = NA,
+    `SF3B1-mutant` = 1,`Non-SF3B1-mutant` = 1,
+    `Iron deficiency` = 0,`Megaloblastic` = 0),
+  mds_binary = c(
+    `Normal` = NA,
+    `SF3B1-mutant` = 1,`Non-SF3B1-mutant` = 0,
+    `Iron deficiency` = NA,`Megaloblastic` = NA),
+  anemia_binary = c(
+    `Normal` = NA,
+    `SF3B1-mutant` = NA,`Non-SF3B1-mutant` = NA,
+    `Iron deficiency` = 0,`Megaloblastic` = 1)
+)
 
 all_metrics <- read_csv(
   "../mile-vice/cv_metrics.csv",
@@ -86,7 +133,7 @@ all_roc_df <- do.call(rbind,all_roc) %>%
                             labels = c("B.C.","Morphology","Morphology + B.C."))) %>%
   mutate(nvc = as.numeric(nvc))
 
-# cv metrics --------------------------------------------------------------
+# assess which hyperparameters are best -----------------------------------
 
 all_roc_df %>%
   subset(data_type == "Morphology") %>%
@@ -161,6 +208,9 @@ all_roc_df %>%
   facet_wrap(~ dataset) +
   ggsave("figures/mile-vice-cv-performance-lines.pdf",height = 1.8,width = 2.5)
 
+
+# auroc analysis ----------------------------------------------------------
+
 best_models_so <- all_roc_df %>%
   select(nvc,task,multi_objective = mo,value = auc_value,dataset = data_type) %>%
   subset(multi_objective == F) %>%
@@ -222,6 +272,14 @@ for (i in 1:nrow(distinct(select(best_models_mo,nvc,dataset)))) {
              nvc == tmp$nvc)
 }
 
+all_roc_validation <- list()
+for (file_path in list.files("../mile-vice/predictions/",full.names = T,pattern = "adden_2")) {
+  tmp <- merge(read_prediction(file_path),all_conditions,all=F,by="slide_id") %>%
+    mutate(labels_binary = label_conversion[[task[1]]][as.character(fine_class)]) %>%
+    subset(!is.na(labels_binary))
+  plot(roc(tmp$labels_binary,tmp$p2),main = file_path)
+}
+
 best_models_roc_curves_df <- do.call(rbind,best_models_roc_curves)
 
 best_models_roc_curves_df %>%
@@ -229,7 +287,7 @@ best_models_roc_curves_df %>%
   subset(mo == F) %>%
   ggplot(aes(x = 1-specificity,y = sensitivity,colour = data_type)) + 
   geom_abline(slope = 1,intercept = 0,size = 0.25,linetype = 2,alpha = 0.5) +
-  geom_line(size = 0.5) +
+  geom_line(size = 0.5,alpha = 0.7) +
   facet_wrap(~ task) +
   theme_pretty(base_size = 6) + 
   scale_colour_manual(values = c("red4","orange"),name = NULL) + 
@@ -239,7 +297,26 @@ best_models_roc_curves_df %>%
         panel.spacing = unit(0.8,"lines")) +
   coord_cartesian(xlim = c(0,1),ylim = c(0,1)) + 
   scale_x_continuous(expand = c(0.01,0.01)) +
-  scale_y_continuous(expand = c(0.01,0.01))
+  scale_y_continuous(expand = c(0.01,0.01)) + 
+  ggsave("figures/mile-vice-roc-curve.pdf",height = 2.3,width = 2.3)
+
+best_models_roc_curves_df %>%
+  arrange(sensitivity,-specificity) %>% 
+  subset(mo == T) %>%
+  ggplot(aes(x = 1-specificity,y = sensitivity,colour = data_type)) + 
+  geom_abline(slope = 1,intercept = 0,size = 0.25,linetype = 2,alpha = 0.5) +
+  geom_line(size = 0.5,alpha = 0.7) +
+  facet_wrap(~ task) +
+  theme_pretty(base_size = 6) + 
+  scale_colour_manual(values = c("red4","orange"),name = NULL) + 
+  theme(legend.position = "bottom",
+        legend.key.height = unit(0.1,"cm"),
+        legend.key.width = unit(0.2,"cm"),
+        panel.spacing = unit(0.8,"lines")) +
+  coord_cartesian(xlim = c(0,1),ylim = c(0,1)) + 
+  scale_x_continuous(expand = c(0.01,0.01)) +
+  scale_y_continuous(expand = c(0.01,0.01)) + 
+  ggsave("figures/mile-vice-roc-curve-mo.pdf",height = 2.3,width = 2.3)
 
 do.call(what = rbind,best_models_so_list) %>%
   arrange() %>% 
@@ -274,24 +351,52 @@ glmnet_scores <- read.csv("data_output/glmnet-auroc.csv") %>%
   mutate(key = ifelse(key == "glmnet_auc","glmnet","MILe-ViCe")) %>%
   mutate(mo = multi_objective) %>%
   subset(!(mo == T & key == "glmnet")) %>%
-  mutate(task = factor(task,
-                       levels = c("Disease detection","Disease classification",
-                                  "SF3B1mut detection","Anaemia classification") %>% 
-                         rev))
+  mutate(task = factor(
+    task,
+    levels = c("Disease detection","Disease classification",
+               "SF3B1mut detection","Anaemia classification") %>% 
+      rev))
 
-ggplot(glmnet_scores,
-       aes(x = task,y = value,
-           fill = key,colour = mo)) + 
+ggplot(glmnet_scores,aes(x = task,y = value,fill = key)) + 
   geom_bar(stat = "identity",
            aes(group = reorder(paste(key,mo),mo*1000 + as.numeric(key))),
-           position = position_dodge(width = 0.9)) + 
-  scale_y_continuous(
-    labels = function(x) sprintf("%.1f%%",x*100),
-    expand = c(0,0)) + 
+           position = position_dodge(width = 0.95)) + 
+  geom_bar(stat = "identity",
+           aes(group = reorder(paste(key,mo),mo*1000 + as.numeric(key)),
+               colour = mo),
+           fill = NA,
+           position = position_dodge(width = 0.95)) +
+  scale_y_continuous(labels = function(x) sprintf("%.1f%%",x*100),expand = c(0.05,0,0,0)) + 
   ylab("AUC") +
   xlab("") +
   coord_flip(ylim = c(0.7,1)) +
   theme_pretty(base_size = 6) + 
   facet_wrap(~ dataset) +
   scale_colour_manual(guide = F,values = c(NA,"black")) +
-  scale_fill_manual(name = NULL,values = c("lightblue","goldenrod"))
+  scale_fill_manual(name = NULL,values = c("lightblue","goldenrod")) + 
+  theme(legend.position = "bottom",
+        legend.key.size = unit(0.2,"cm"),
+        panel.spacing = unit(1.5,"lines")) +
+  ggsave("figures/mile-vice-vs-glmnet.pdf",height = 1.5,width = 4)
+  
+spread(glmnet_scores,key = "key",value = "value") %>%
+  group_by(dataset,task) %>%
+  mutate(glmnet = ifelse(is.na(glmnet),glmnet[!is.na(glmnet)][1],glmnet)) %>%
+  ggplot(aes(x = glmnet,y = `MILe-ViCe`,colour = dataset,shape = mo)) + 
+  geom_abline(slope = 1,linetype = 3,alpha = 0.5,size = 0.5) +
+  geom_point(size = 1) + 
+  scale_x_continuous(labels = function(x) sprintf("%.1f%%",x*100)) + 
+  scale_y_continuous(labels = function(x) sprintf("%.1f%%",x*100)) + 
+  ylab("MILe-ViCe AUC") +
+  xlab("glmnet AUC") +
+  coord_cartesian(xlim = c(0.8,1),ylim = c(0.8,1)) +
+  theme_pretty(base_size = 6) + 
+  scale_colour_manual(values = c("red4","orange"),name = NULL) + 
+  scale_shape_manual(values = c(3,16),
+                     labels = c("Single objective","Multiple objective"),name = NULL) +
+  theme(legend.position = "bottom",
+        legend.key.size = unit(0.2,"cm"),
+        panel.spacing = unit(1.5,"lines")) +
+  guides(colour = guide_legend(nrow = 2),
+         shape = guide_legend(nrow = 2)) +
+  ggsave("figures/mile-vice-vs-glmnet-scatter.pdf",height = 2.5,width = 2.5)
