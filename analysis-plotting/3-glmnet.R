@@ -156,17 +156,24 @@ label_conversion <- list(
   anaemia_classification = c(
     `Normal` = NA,
     `SF3B1-mutant` = NA,`Non-SF3B1-mutant` = NA,
-    `Iron deficiency` = 0,`Megaloblastic` = 1)
+    `Iron deficiency` = 0,`Megaloblastic` = 1),
+  multiclass_classification = c(
+    `Normal` = 1,
+    `SF3B1-mutant` = 2,`Non-SF3B1-mutant` = 3,
+    `Iron deficiency` = 4,`Megaloblastic` = 5)
 )
 
 reverse_label_conversion <- list(
   disease_detection = c("Normal","Disease"),
   disease_classification = c("Anaemia","MDS"),
   sf3b1 = c("nonSF3B1","SF3B1"),
-  anaemia_classification = c("Iron deficiency","Megaloblastic")
+  anaemia_classification = c("Iron deficiency","Megaloblastic"),
+  multiclass_classification = c("Normal","SF3B1","nonSF3B1","Iron deficiency","Megaloblastic")
 )
 
 glmnet_models <- list(
+  morphology = list(),full = list(),bcdem = list())
+glmnet_multiclass_models <- list(
   morphology = list(),full = list(),bcdem = list())
 rf_models <- list(
   morphology = list(),full = list(),bcdem = list())
@@ -335,6 +342,100 @@ if (file.exists("data_output/glmnet_models.rds")) {
     }
   }
   saveRDS(glmnet_models,"data_output/glmnet_models.rds")
+}
+
+
+# model training (glmnet - multiclass) ------------------------------------
+
+if (file.exists("data_output/glmnet_models_multiclass.rds")) {
+  glmnet_multiclass_models <- readRDS("data_output/glmnet_models_multiclass.rds")
+} else {
+  for (data_type in c("bcdem","morphology","full")) {
+    glmnet_multiclass_models[[data_type]] <- list()
+    
+    for (i in 1:K) {
+      print(sprintf("Training fold = %s (glmnet; multiclass with %s)",i,data_type))
+      
+      # define folds and training/validation sets
+      glmnet_multiclass_models[[data_type]][[i]] <- list()
+      fold <- stratified_folds[[i]]
+      training_X <- full_dataset_collection$data[[data_type]][fold$train,] %>%
+        as.matrix
+      training_y <- label_conversion$multiclass_classification[
+        full_dataset_collection$fine_labels[fold$train]]
+      NA_train <- is.na(training_y)
+      training_X <- training_X[!NA_train,]
+      training_y <- training_y[!NA_train]
+      
+      testing_X <- full_dataset_collection$data[[data_type]][fold$test,] %>%
+        as.matrix
+      testing_y <- label_conversion$multiclass_classification[
+        full_dataset_collection$fine_labels[fold$test]]
+      NA_test <- is.na(testing_y)
+      testing_X <- testing_X[!NA_test,]
+      testing_y <- testing_y[!NA_test]
+      
+      # calculate class weights
+      class_weights <- make_class_weights(training_y)
+      
+      # scaling
+      training_X <- predict(scales[[data_type]][[i]],training_X)
+      testing_X <- predict(scales[[data_type]][[i]],testing_X)
+      
+      # training and inference for training and validation sets
+      alphas <- c(0.01,0.1,0.25,0.5,0.75,0.9,0.99)
+      models <- list()
+      for (alpha in alphas) {
+        m <- cv.glmnet(
+          training_X,training_y,family = "multinomial",type.measure = "class",
+          nfolds = 5,weights = class_weights,alpha = alpha)
+        l <- m$lambda
+        l.min <- m$lambda.min
+        models[[as.character(alpha)]]$model <- m
+        models[[as.character(alpha)]]$metric <- m$cvm[l == l.min]
+      }
+      best_model_idx <- lapply(models,function(x) x$metric) %>%
+        unlist
+      best_model_idx <- which.min(best_model_idx)
+      trained_model <- models[[best_model_idx]]$model
+      
+      train_proba_pred <- predict(trained_model,
+                                  newx = training_X,type = "response")[,,1]
+      train_class_pred <- predict(trained_model,
+                                  newx = training_X,type = "class")
+      colnames(train_proba_pred) <- reverse_label_conversion$multiclass_classification
+      
+      test_proba_pred <- predict(trained_model,
+                                 newx = testing_X,type = "response")[,,1]
+      test_class_pred <- predict(trained_model,
+                                 newx = testing_X,type = "class")
+      colnames(test_proba_pred) <- reverse_label_conversion$multiclass_classification
+      
+      glmnet_multiclass_models[[data_type]][[i]]$model <- trained_model
+      glmnet_multiclass_models[[data_type]][[i]]$metrics <- list(
+        Training = list(
+          ConfusionMatrix = confusionMatrix(
+            factor(reverse_label_conversion$multiclass_classification[as.numeric(train_class_pred)],
+                   levels = reverse_label_conversion$multiclass_classification),
+            factor(reverse_label_conversion$multiclass_classification[training_y],
+                   levels = reverse_label_conversion$multiclass_classification)),
+          AUC = multiclass.roc(
+            reverse_label_conversion$multiclass_classification[training_y],
+            train_proba_pred,quiet = T,
+            levels = reverse_label_conversion$multiclass_classification)),
+        Validation = list(
+          ConfusionMatrix = confusionMatrix(
+            factor(reverse_label_conversion$multiclass_classification[as.numeric(test_class_pred)],
+                   levels = reverse_label_conversion$multiclass_classification),
+            factor(reverse_label_conversion$multiclass_classification[testing_y],
+                   levels = reverse_label_conversion$multiclass_classification)),
+          AUC = multiclass.roc(
+            reverse_label_conversion$multiclass_classification[testing_y],
+            test_proba_pred,quiet = T,
+            levels = reverse_label_conversion$multiclass_classification)))
+    }
+  }
+  saveRDS(glmnet_multiclass_models,"data_output/glmnet_models_multiclass.rds")
 }
 
 # model training (rrf) ----------------------------------------------------
@@ -600,11 +701,75 @@ all_roc_df %>%
   ylab("Area under the curve") +
   coord_flip(ylim = c(0.5,1)) + 
   scale_y_continuous(expand = c(0,0,0.02,0.02)) + 
-    ggsave("figures/auc-bars.pdf",height=1.7,width=3)
+  ggsave("figures/auc-bars.pdf",height=1.7,width=3)
 
 write.csv(x = subset(all_metrics_df_long,Model == "glmnet"),
           file = "data_output/glmnet-metrics.csv")
 write.csv(x = all_roc_df,file = "data_output/glmnet-auroc.csv")
+
+# comparing performance (multiclass glmnet) -------------------------------
+
+all_roc_multiclass <- list()
+all_roc_multiclass_comparisons <- list()
+
+for (data_type in names(glmnet_multiclass_models)) {
+  all_predictors <- lapply(glmnet_multiclass_models[[data_type]],function(x) x$metrics$Validation$AUC$predictor) %>%
+    do.call(what = rbind)
+  all_responses <- lapply(glmnet_multiclass_models[[data_type]],function(x) x$metrics$Validation$AUC$response) %>%
+    do.call(what = c)
+  tmp <- multiclass.roc(all_responses,all_predictors)
+  all_roc_multiclass_comparisons 
+
+  all_roc_multiclass_comparisons[[data_type]] <- lapply(
+    names(tmp$rocs),
+    function(x) data.frame(comparisons = x,auc = auc(tmp$rocs[[x]][[1]]))) %>%
+    do.call(what = rbind) %>%
+    mutate(data_type = data_type)
+  
+  all_roc_multiclass[[data_type]] <- data.frame(
+    auc = as.numeric(tmp$auc),data_type = data_type)
+}
+
+all_roc_multiclass_comparisons_df <- all_roc_multiclass_comparisons %>%
+  do.call(what = rbind) %>%
+  rowwise() %>%
+  mutate(A = str_split(comparisons,"/")[[1]][1],
+         B = str_split(comparisons,"/")[[1]][2]) %>%
+  mutate(A = factor(A,levels = c("Normal","SF3B1","nonSF3B1","Iron deficiency")),
+         B = factor(B,levels = c("Megaloblastic","Iron deficiency","nonSF3B1","SF3B1"))) %>%
+  mutate(data_type = factor(data_type,levels = c("bcdem","morphology","full"),
+                            labels = c("B.C.","Morphology","Morphology + B.C.")))
+
+all_roc_multiclass_df <- all_roc_multiclass %>%
+  do.call(what = rbind) %>%
+  mutate(data_type = factor(data_type,levels = c("bcdem","morphology","full"),
+                            labels = c("B.C.","Morphology","Morphology + B.C.")))
+
+all_roc_multiclass_comparisons_df %>%
+  ggplot(aes(x = A,y = B,fill = auc)) + 
+  geom_tile() + 
+  facet_wrap(~ data_type) + 
+  theme_pretty(base_size = 6) + 
+  scale_x_discrete(expand = c(0,0)) +
+  rotate_x_text() +
+  scale_y_discrete(expand = c(0,0)) + 
+  scale_fill_material(palette = "deep-purple",name = "AUC") +
+  xlab("") +
+  theme(legend.key.height = unit(0.3,"cm"),
+        legend.key.width = unit(0.2,"cm")) +
+  ylab("") + 
+  ggsave("figures/auc-multiclass-comparisons.pdf",height=1.5,width=3.3)
+
+all_roc_multiclass_df %>%
+  ggplot(aes(x = data_type,y = auc,fill = data_type)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("blue4","red4","orange"),guide = F) +
+  xlab("") +
+  ylab("Average multi-class AUC") + 
+  scale_y_continuous(expand = c(0,0,0.01,0)) +
+  theme_pretty(base_size = 6) +
+  coord_flip(ylim = c(0.7,1)) + 
+  ggsave("figures/auc-multiclass.pdf",height=0.6,width=2)
 
 # feature importance ------------------------------------------------------
 

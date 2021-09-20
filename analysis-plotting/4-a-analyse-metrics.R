@@ -1,23 +1,23 @@
-# TODO: independent validation cohort
-
 # setup -------------------------------------------------------------------
 
 source("function-library.R")
 
 library(tidyverse)
 library(cowplot)
-library(WRS2)
-library(umap)
 library(ggpubr)
 library(caret)
-library(glmnet)
 library(pROC)
-library(RRF)
-library(MLmetrics)
 
 select <- dplyr::select
 
 set.seed(42)
+
+read_prediction <- function(file_path) {
+  read_csv(file_path,
+           col_names = c("slide_id","labels","p1","p2")) %>%
+    mutate(task = gsub(".csv","",gsub("labels/","",labels))) %>%
+    return
+}
 
 task_conversion <- c(
   cv_binary = "Disease detection",
@@ -29,13 +29,6 @@ task_conversion_reverse <- names(task_conversion)
 names(task_conversion_reverse) <- task_conversion
 
 task_conversion_mo <- c("cv_anemia_binary","cv_binary","cv_mds_binary","cv_disease_binary")
-
-read_prediction <- function(file_path) {
-  read_csv(file_path,
-                col_names = c("slide_id","labels","p1","p2")) %>%
-    mutate(task = gsub(".csv","",gsub("labels/","",labels))) %>%
-    return
-}
 
 all_conditions <- rbind(
   read_csv(
@@ -80,7 +73,7 @@ label_conversion <- list(
 
 all_metrics <- read_csv(
   "../mile-vice/cv_metrics.csv",
-  col_names = c("set","fold","metric","value","nvc","nc","task_number","task","dataset")) %>%
+  col_names = c("set","fold","metric","value","nvc","nc","task_number","task","dataset","feature_set")) %>%
   mutate(task_original = task) %>%
   mutate(multi_objective = ifelse(
     task == "cv_multi_objective","Multiple objective","Single objective")) %>% 
@@ -88,14 +81,16 @@ all_metrics <- read_csv(
     multi_objective,levels = c("Single objective","Multiple objective"))) %>%
   mutate(task = ifelse(task == "cv_multi_objective",task_conversion_mo[task_number+1],task)) %>%
   mutate(task = factor(task_conversion[task],levels = rev(task_conversion))) %>%
-  mutate(dataset_pretty = c(cells = "Morphology",cells_bc = "Morphology + B.C.")[dataset])
+  mutate(dataset_pretty = c(cells = "Morphology",cells_bc = "Morphology + B.C.")[dataset]) %>%
+  subset(feature_set == "subset_features")
 
 probs_class <- read_csv(
   "../mile-vice/probs_class_train.csv",
-  col_names = c("X","fold","task_idx","prob","class","class_true","task","nvc","data_type")) 
+  col_names = c("X","fold","task_idx","prob","class","class_true","task","nvc","data_type","feature_set")) %>%
+  subset(feature_set == "subset_features")
 
 probs_class_idx <- probs_class %>%
-  select(task_idx,task,data_type,nvc) %>%
+  select(task_idx,task,data_type,nvc,feature_set) %>%
   distinct
 
 all_roc <- list()
@@ -105,7 +100,7 @@ for (i in 1:nrow(probs_class_idx)) {
   tmp <- probs_class_idx[i,] %>%
     unlist
   sub_probs_class <- probs_class %>%
-    subset(task_idx==tmp[1] & task==tmp[2] & data_type==tmp[3] & nvc==tmp[4])
+    subset(task_idx==tmp[1] & task==tmp[2] & data_type==tmp[3] & nvc==tmp[4] & feature_set==tmp[5])
   full_roc <- roc(sub_probs_class$class_true,sub_probs_class$prob)
   roc_coords <- get.coords.for.ggplot(full_roc) %>%
     as.tibble %>%
@@ -114,6 +109,7 @@ for (i in 1:nrow(probs_class_idx)) {
   all_roc[[l_s]]$task_idx <- tmp[1]
   all_roc[[l_s]]$task <- tmp[2]
   all_roc[[l_s]]$nvc <- tmp[4]
+  all_roc[[l_s]]$feature_set <- tmp[5]
   all_roc[[l_s]]$auc_value <- full_roc$auc
 }
 
@@ -208,9 +204,6 @@ all_roc_df %>%
   facet_wrap(~ dataset) +
   ggsave("figures/mile-vice-cv-performance-lines.pdf",height = 1.8,width = 2.5)
 
-
-# auroc analysis ----------------------------------------------------------
-
 best_models_so <- all_roc_df %>%
   select(nvc,task,multi_objective = mo,value = auc_value,dataset = data_type) %>%
   subset(multi_objective == F) %>%
@@ -219,6 +212,7 @@ best_models_so <- all_roc_df %>%
   mutate(nvc = factor(nvc,levels = sort(unique(nvc)))) %>% 
   group_by(task,multi_objective,dataset) %>% 
   filter(value == max(value)) %>%
+  filter(nvc == min(as.numeric(as.character(nvc)))) %>% 
   as_tibble() %>% 
   arrange(dataset,task)
 
@@ -233,6 +227,7 @@ best_models_mo <- all_roc_df %>%
   group_by(dataset) %>%
   filter(best_average == max(best_average)) %>%
   select(-best_average) %>%
+  filter(nvc == min(as.numeric(as.character(nvc)))) %>% 
   as_tibble()
 
 best_models_roc_curves <- list()
@@ -272,13 +267,29 @@ for (i in 1:nrow(distinct(select(best_models_mo,nvc,dataset)))) {
              nvc == tmp$nvc)
 }
 
-all_roc_validation <- list()
-for (file_path in list.files("../mile-vice/predictions/",full.names = T,pattern = "adden_2")) {
-  tmp <- merge(read_prediction(file_path),all_conditions,all=F,by="slide_id") %>%
-    mutate(labels_binary = label_conversion[[task[1]]][as.character(fine_class)]) %>%
-    subset(!is.na(labels_binary))
-  plot(roc(tmp$labels_binary,tmp$p2),main = file_path)
-}
+do.call(what = rbind,best_models_so_list) %>%
+  arrange() %>% 
+  mutate(to = gsub("cv_","",task_original)) %>%
+  transmute(a = sprintf("models/cv_subset.%s.%s%s",
+                        to,nvc,
+                        ifelse(dataset == "cells","",".bc")),
+            b = fold,c = sprintf("labels/%s.csv",
+                                 to)) %>%
+  write.table(file = "../mile-vice/best_models",
+              row.names = F,col.names = F,quote = F,sep = ',')
+
+do.call(what = rbind,best_models_mo_list) %>%
+  distinct %>%
+  transmute(a = sprintf("models/cv_subset.%s.%s%s",
+                        "multi_objective",nvc,
+                        ifelse(dataset == "cells","",".bc")),
+            b = fold,
+            c = sprintf(
+              "labels/binary.csv",NA)) %>%
+  write.table(file = "../mile-vice/best_models_mo",
+              row.names = F,col.names = F,quote = F,sep = ',')
+
+# auroc analysis ----------------------------------------------------------
 
 best_models_roc_curves_df <- do.call(rbind,best_models_roc_curves)
 
@@ -317,28 +328,6 @@ best_models_roc_curves_df %>%
   scale_x_continuous(expand = c(0.01,0.01)) +
   scale_y_continuous(expand = c(0.01,0.01)) + 
   ggsave("figures/mile-vice-roc-curve-mo.pdf",height = 2.3,width = 2.3)
-
-do.call(what = rbind,best_models_so_list) %>%
-  arrange() %>% 
-  mutate(to = gsub("cv_","",task_original)) %>%
-  transmute(a = sprintf("models/cv.%s.%s%s",
-                        to,nvc,
-                        ifelse(dataset == "cells","",".bc")),
-         b = fold,c = sprintf("labels/%s.csv",
-                              to)) %>%
-  write.table(file = "../mile-vice/best_models",
-              row.names = F,col.names = F,quote = F,sep = ',')
-
-do.call(what = rbind,best_models_mo_list) %>%
-  distinct %>%
-  transmute(a = sprintf("models/cv.%s.%s%s",
-                        "multi_objective",nvc,
-                        ifelse(dataset == "cells","",".bc")),
-            b = fold,
-            c = sprintf(
-              "labels/binary.csv",NA)) %>%
-  write.table(file = "../mile-vice/best_models_mo",
-              row.names = F,col.names = F,quote = F,sep = ',')
 
 # compare with glmnet -----------------------------------------------------
 
