@@ -51,16 +51,16 @@ def image_generator_slide(slide_path,
 
 class ImageGeneratorWithQueue:
     def __init__(self,slide_path,csv_path,
-                 extra_padding=128,
-                 maxsize=1,
-                 height=512,
-                 width=512):
+                 extra_padding=128,maxsize=1,
+                 height=512,width=512,
+                 rescale_factor=1):
         self.maxsize = maxsize
         self.csv_path = csv_path
         self.slide_path = slide_path
         self.extra_padding = extra_padding
         self.height = height
         self.width = width
+        self.rescale_factor = rescale_factor
 
         self.q = Queue(self.maxsize)
         self.p = Process(
@@ -72,8 +72,7 @@ class ImageGeneratorWithQueue:
             im_gen = image_generator(
                 quality_csv_path=csv_path,
                 slide_path=slide_path,
-                extra_padding=extra_padding
-            )
+                extra_padding=extra_padding)
         else:
             im_gen = image_generator_slide(
                 slide_path,

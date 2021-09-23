@@ -8,6 +8,7 @@ import cv2
 from PIL import Image
 from scipy.ndimage import convolve
 from skimage.filters import apply_hysteresis_threshold
+from skimage.transform import rescale
 from scipy.ndimage.morphology import binary_fill_holes
 import tensorflow as tf
 
@@ -81,20 +82,34 @@ def characterise_cell(image_labels_im_i):
     return features
 
 
-def refine_prediction_characterise(image,mask):
+def refine_prediction_characterise(image,mask,rescale_factor=1):
     mask_binary = apply_hysteresis_threshold(mask,0.45,0.5)
     mask_binary_holes = binary_fill_holes(mask_binary)
 
     num_labels, labels_im = cv2.connectedComponents(
         np.uint8(mask_binary_holes))
 
-    for i in range(1,num_labels):
-        try:
-            features = characterise_cell([image,labels_im,i])
-            if features is not None:
-                yield features
-        except:
-            pass
+    if num_labels > 1:
+        if rescale_factor != 1:
+            image = rescale(image,rescale_factor,
+                            anti_aliasing=True,multichannel=True,
+                            preserve_range=True,clip=False)
+            labels_im = rescale(labels_im,rescale_factor,
+                                anti_aliasing=True,order=0,
+                                preserve_range=True,clip=False)
+
+        for i in range(1,num_labels):
+            try:
+                features = characterise_cell([image,labels_im,i])
+                if features is not None:
+                    if rescale_factor != 1:
+                        features['x'] = np.int32(
+                            np.round(features['x'] / rescale_factor))
+                        features['y'] = np.int32(
+                            np.round(features['y'] / rescale_factor))
+                    yield features
+            except:
+                pass
 
 parser = argparse.ArgumentParser(
       prog = 'u-net.py',
@@ -130,6 +145,11 @@ parser.add_argument('--n_processes_data',dest='n_processes_data',
                     type=int,
                     default=1,
                     help='Number of processes for data loading.')
+parser.add_argument('--rescale_factor',dest='rescale_factor',
+                    action='store',
+                    type=float,
+                    default=1,
+                    help='Factor to resize cells (due to different mpp).')
 
 args = parser.parse_args()
 
@@ -140,7 +160,6 @@ inputs = tf.placeholder(tf.uint8,
                         name='Input_Tensor')
 inputs = tf.image.convert_image_dtype(inputs,tf.float32)
 
-#flipped_inputs = tf.image.flip_left_right(inputs)
 inputs_ = []
 for i in range(n_i):
     inputs_curr = inputs[i,:,:,:]
@@ -162,10 +181,6 @@ unet = unet_utilities.u_net(
 prediction_network = tf.expand_dims(
   tf.nn.softmax(unet,axis=-1)[:,:,:,1],
   axis=-1)
-
-#flipped_prediction = tf.image.flip_left_right(
-#  prediction_network[4:,:,:,:])
-#prediction_network = prediction_network[:4,:,:,:]
 
 pred_list = []
 prediction_network_ = []
@@ -192,8 +207,6 @@ igwq = ImageGeneratorWithQueue(args.slide_path,args.csv_path,
                                maxsize=args.n_processes_data)
 igwq.start()
 
-print('****'*100)
-
 saver = tf.train.Saver()
 X = []
 Y = []
@@ -219,7 +232,7 @@ with tf.Session() as sess:
                 image = images[image_idx,:,:,:]
                 segmented_image = segmented_images[image_idx,:,:,:]
                 for obj in refine_prediction_characterise(
-                        image,segmented_image):
+                        image,segmented_image,args.rescale_factor):
                     y,x = obj['x'],obj['y']
                     if np.any([
                             x.min() == 0,

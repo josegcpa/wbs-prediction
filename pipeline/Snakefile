@@ -5,6 +5,7 @@ slide_path = config['slide_path']
 output_path = config['output_path']
 unet_ckpt = config['unet_ckpt']
 qc_ckpt = config['qc_ckpt']
+rescale_factor = config['rescale_factor']
 
 slide_id = slide_path.split('/')[-1].split('.')[0]
 
@@ -62,7 +63,8 @@ rule segment_characterise_rbc:
     params:
         log_id="RBC_SEGMENTATION_{}".format(slide_id),
         n_cores=16,
-        mem=16000
+        mem=16000,
+        rescale_factor=rescale_factor
     shell:
         """
         python3 scripts/python/segment_slide_rbc.py \
@@ -70,7 +72,8 @@ rule segment_characterise_rbc:
             --slide_path {input.slide_path} \
             --output_path {output.seg} \
             --n_processes_analysis 4 \
-            --n_processes_data 2 && touch {output.checkpoint_seg_rbc}
+            --n_processes_data 2 \
+            --rescale_factor {params.rescale_factor} && touch {output.checkpoint_seg_rbc}
         """
 
 rule segment_characterise_wbc:
@@ -82,7 +85,8 @@ rule segment_characterise_wbc:
         seg="{}/_segmented_wbc/{}.h5".format(output_path,slide_id),
         checkpoint_seg_wbc="{}/_checkpoints/{}_seg_wbc".format(output_path,slide_id)
     params:
-        unet_ckpt=unet_ckpt
+        unet_ckpt=unet_ckpt,
+        rescale_factor=rescale_factor
     message:
         "Segmenting WBC."
     shell:
@@ -93,7 +97,8 @@ rule segment_characterise_wbc:
             --checkpoint_path {params.unet_ckpt} \
             --depth 0.25 \
             --output_path {output.seg} \
-            --n_processes_data 8 && touch {output.checkpoint_seg_wbc}
+            --n_processes_data 8 \
+            --rescale_factor {params.rescale_factor} && touch {output.checkpoint_seg_wbc}
         """
 
 rule aggregate_rbc:
@@ -129,11 +134,13 @@ rule aggregate_wbc:
     params:
         log_id="WBC_AGGREGATION_{}".format(slide_id),
         n_cores=2,
-        mem=8000
+        mem=8000,
+        rescale_factor=rescale_factor
     shell:
         """
         python3 scripts/python/aggregate_hdf5_with_nucleus.py \
             --slide_path {input.slide} \
             --hdf5_path {input.segmentation}\
-            --output_path {output.agg} && touch {output.checkpoint_agg_wbc}
+            --output_path {output.agg} \
+            --rescale_factor {params.rescale_factor} && touch {output.checkpoint_agg_wbc}
         """

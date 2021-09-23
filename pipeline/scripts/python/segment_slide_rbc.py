@@ -8,6 +8,7 @@ from PIL import Image
 from multiprocessing import Pool
 import h5py
 import pickle
+from skimage.transform import rescale
 
 from mask_rbc import wraper as mask_rbc
 from image_generator import ImageGeneratorWithQueue
@@ -50,6 +51,11 @@ parser.add_argument('--n_processes_data',dest='n_processes_data',
                     type=int,
                     default=1,
                     help='Number of processes for data loading.')
+parser.add_argument('--rescale_factor',dest='rescale_factor',
+                    action='store',
+                    type=float,
+                    default=1,
+                    help='Factor to resize cells (due to different mpp).')
 
 args = parser.parse_args()
 
@@ -68,6 +74,14 @@ osss = openslide.OpenSlide(args.slide_path)
 
 for image in igwq.generate():
     a = time.time()
+    # resize image if necessary (due to different mpp)
+    if args.rescale_factor != 1:
+        image = (
+            rescale(image[0],args.rescale_factor,
+                    anti_aliasing=True,multichannel=True,
+                    preserve_range=True,clip=False).astype(np.uint8),
+                    image[1])
+
     image_list.append(image)
     i += 1
     if len(image_list) == args.n_processes_analysis:
@@ -75,6 +89,9 @@ for image in igwq.generate():
         for im_dict_list in output:
             im_dict_list,coords = im_dict_list
             for obj in im_dict_list:
+                if args.rescale_factor != 1:
+                    obj['x'] = np.int32(np.round(obj['x'] / args.rescale_factor))
+                    obj['y'] = np.int32(np.round(obj['y'] / args.rescale_factor))
                 y = obj['x'] + coords[1]
                 x = obj['y'] + coords[0]
                 features = []

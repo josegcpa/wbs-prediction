@@ -15,3 +15,7 @@ tmp_images
 examples
 images_from_examples
 pipeline-venv
+feature_images_from_examples
+rbc_examples.h5
+wbc_examples.h5
+test-rescale.sh

@@ -6,6 +6,7 @@ import time
 import openslide
 import h5py
 import cv2
+from skimage.transform import rescale
 
 import MIA
 wrapper_single_image_separate = MIA.wrapper_single_image_separate
@@ -50,6 +51,11 @@ parser.add_argument('--output_path',dest='output_path',
                     action='store',
                     default=None,
                     help='Output path for the hdf5 file.')
+parser.add_argument('--rescale_factor',dest='rescale_factor',
+                    action='store',
+                    type=float,
+                    default=1,
+                    help='Factor to resize cells (due to different mpp).')
 
 args = parser.parse_args()
 
@@ -79,9 +85,18 @@ for item in F:
     features = []
     for i,feature in enumerate(MIA_FEATURES):
         features.append(cell[i])
-    if np.any(np.isnan(features)): pass
-    elif np.any(np.isinf(features)): pass
+    if np.any(np.isnan(features)): 
+        pass
+    elif np.any(np.isinf(features)): 
+        pass
     else:
+        if args.rescale_factor != 1:
+            cell_image = rescale(cell_image,args.rescale_factor,anti_aliasing=True,
+                                 multichannel=True,preserve_range=True,
+                                 clip=False)
+            mask = rescale(mask,args.rescale_factor,anti_aliasing=True,
+                           order=0,preserve_range=True,
+                           clip=False)
         nucleus_mask,nucleus_cnt = segment_nucleus(
             np.array(cell_image),mask)
         if len(nucleus_cnt) > 0:

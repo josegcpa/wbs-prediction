@@ -7,6 +7,7 @@ import numpy as np
 import h5py
 import openslide
 import re
+from tqdm import tqdm
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Get cell examples.')
@@ -63,20 +64,21 @@ if __name__ == "__main__":
             subset_dict[s].append(c)
     for subset in subset_dict:
         a = all_sizes[0] * subset
-        for cell_idx in subset_dict[s]:
+        for cell_idx in tqdm(subset_dict[s]):
             cell = aggregates['cells'][str(subset)][cell_idx,:]
             i = cell_idx + a
             cell_center = aggregates['cell_centers'][i]
             cell_center_int = cell_center.decode('utf-8')[1:-1].split(',')
             cell_center_int = [float(cell_center_int[0]),float(cell_center_int[1])]
             cell_coordinates = segmentations[cell_center]
-            x = cell_coordinates['X'][::]
-            y = cell_coordinates['Y'][::]
+            if args.flip == True:
+                x = cell_coordinates['Y'][::]
+                y = cell_coordinates['X'][::]
+            else:    
+                x = cell_coordinates['X'][::]
+                y = cell_coordinates['Y'][::]
             location = [x.min()-3,y.min()-3]
             size = [x.max()-location[0] + 6,y.max()-location[1] + 6]
-            if args.flip == True:
-                location = [location[1],location[0]]
-                size = [size[1],size[0]]
             image = np.array(slide.read_region(location,0,size))[:,:,:3]
             segmented_image = np.zeros_like(image[:,:,0])
             segmented_image[(y-location[1],x-location[0])] = 255
@@ -86,4 +88,5 @@ if __name__ == "__main__":
             g.create_dataset('isolated_image',data=segmented_image,dtype=np.uint8)
             g.create_dataset('cell_center_y',data=cell_center_int[0])
             g.create_dataset('cell_center_x',data=cell_center_int[1])
+            g.create_dataset('features',data=cell)
 
