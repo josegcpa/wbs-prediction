@@ -122,7 +122,9 @@ features_conversion <- c(
   mass_displacement_red_nuclear = "Mass displacement (R; nuc.)",
   mass_displacement_green_nuclear = "Mass displacement (G; nuc.)",
   mass_displacement_blue_nuclear = "Mass displacement (B; nuc.)",
-  mass_displacement_av_nuclear = "Mass displacement (grey; nuc.)"
+  mass_displacement_av_nuclear = "Mass displacement (grey; nuc.)",
+  hb_g_dl = "Haemoglobin (g/dL)",plt_ul = "Platelets (/uL)",
+  wbc_ul = "WBC (/uL)"
 )
 
 # functions ---------------------------------------------------------------

@@ -180,8 +180,8 @@ rf_models <- list(
 
 # data splitting ----------------------------------------------------------
 
-wbc_feat_cols <- c(1:19,27:50,58:64) #1:ncol(wbc_all_cells_summaries)
-rbc_feat_cols <- 1:ncol(rbc_all_cells_summaries)
+wbc_feat_cols <- 1:ncol(wbc_all_cells_summaries) #c(1:19,27,40:50,61:64)
+rbc_feat_cols <- 1:ncol(rbc_all_cells_summaries) #c(1:19,27,39:46)
 
 wbc_all_cells_summaries <- wbc_all_cells_summaries[,wbc_feat_cols] %>%
   gather(key = "key",value = "value",-slide_id,-f,-fine_class,-coarse_class)
@@ -869,9 +869,10 @@ for (data_type in c("bcdem","morphology","full")) {
       mutate(model = "RRF")
     non_zero_feature_association_df <- rbind(all_coefs_glmnet,all_coefs_rrf) %>%
       group_by(model,features) %>%
-      summarise(f = mean(abs(coef),na.rm=T),.groups = "drop") %>%
+      summarise(f = mean(coef,na.rm=T),.groups = "drop") %>%
       spread(key = "model",value = "f") %>%
-      na.omit()
+      na.omit() %>%
+      mutate(sign_glmnet = sign(glmnet),glmnet = abs(glmnet))
     
     C <- cor.test(non_zero_feature_association_df$glmnet,
                   non_zero_feature_association_df$RRF,
@@ -947,12 +948,51 @@ feature_associations_df %>%
     scale_x_continuous(breaks = c(0.0001,0.001,0.01,0.1,1),labels = c(0.1,1,10,100,1000),trans = 'log10') +
     ggsave("figures/compare-feature-imp-full.pdf",height=2.5,width=3)
 
+feature_importance_plot_data <- feature_associations_df %>%
+  mutate(features_pretty = features_conversion[as.character(features_raw)]) %>%
+  mutate(features_pretty = factor(features_pretty,levels = rev(features_conversion))) %>%
+  mutate(features_pretty = gsub("\n","",features_pretty)) %>%
+  subset(data_type == "full") %>%
+  mutate(grouping = ifelse(
+    cell_type == "B.C.",cell_type,
+    sprintf("%s (%s)",cell_type,tolower(moment)))) %>% 
+  ungroup %>% 
+  arrange(glmnet * sign_glmnet) %>%
+  mutate(feature_idx = as.factor(1:length(features_pretty)))
+feature_correspondence <- feature_importance_plot_data$features_pretty
+names(feature_correspondence) <- feature_importance_plot_data$feature_idx
+
+for (x in c("Anaemia classification","Disease classification",
+            "SF3B1mut detection","Disease detection")) {
+  X <- feature_importance_plot_data %>% 
+    subset(task == x) %>% 
+    group_by(grouping) %>%
+    mutate(l = sort(glmnet,decreasing=T)[15]) %>%
+    mutate(l = ifelse(is.na(l),0,l)) %>% 
+    filter(glmnet >= l) 
+  X %>%
+    ggplot(aes(x = feature_idx,y = glmnet*sign_glmnet,colour = grouping)) + 
+    geom_hline(yintercept = 0,size = 0.25,linetype = 3) +
+    geom_point(size = 0.5) + 
+    coord_flip() +
+    scale_x_discrete(labels = function(x) feature_correspondence[x]) +
+    theme_pretty(base_size = 6) + 
+    ylab("glmnet coefficent") +
+    theme(axis.title.y = element_blank(),
+          legend.position = "bottom",
+          legend.key.size = unit(0.1,"cm")) + 
+    facet_grid(grouping ~ .,scales = "free_y",space = "free_y") +
+    scale_colour_manual(values = c("green4","red4","red1","purple4","purple1"),name = NULL) +
+    guides(colour = guide_legend(nrow = 3)) +
+    ggsave(sprintf("figures/feature-importance-glmnet-%s.pdf",gsub(" ","-",tolower(x))),
+           width = 2.5,height = 1.2 + 5. * nrow(X) / 63)}
+
 feature_no <- seq(1,length(features_conversion))
 names(feature_no) <- names(features_conversion)
 
 file_connection <- file("data_output/wbc_feature_subset")
 feature_associations_df %>% 
-  subset(glmnet > 0.001) %>%
+  subset(glmnet > 0.01) %>%
   subset(data_type == "full" & cell_type == "WBC") %>% 
   select(features_raw) %>%
   distinct %>%
@@ -962,10 +1002,13 @@ feature_associations_df %>%
   paste(collapse = ',') %>%
   writeLines(file_connection)
 close(file_connection)
+file.copy("data_output/wbc_feature_subset",
+          "../mile-vice/scripts/wbc_feature_subset",
+          overwrite = T)
 
 file_connection <- file("data_output/rbc_feature_subset")
 feature_associations_df %>% 
-  subset(glmnet > 0.001) %>%
+  subset(glmnet > 0.01) %>%
   subset(data_type == "full" & cell_type == "RBC") %>% 
   select(features_raw) %>%
   distinct %>%
@@ -975,6 +1018,9 @@ feature_associations_df %>%
   paste(collapse = ',') %>%
   writeLines(file_connection)
 close(file_connection)
+file.copy("data_output/rbc_feature_subset",
+          "../mile-vice/scripts/rbc_feature_subset",
+          overwrite = T)
 
 # feature group importance
 
@@ -1108,7 +1154,12 @@ for (ID in IDs) {
     which.max
   best_model <- glmnet_models[[data_type]][[ID]][[best_model_idx]]$model
   ground_truth <- label_conversion[[ID]][full_dataset_morphology_oos$fine_labels]
-  d <- as.matrix(predict(scales[[data_type]][[best_model_idx]],full_dataset_morphology_oos$data))
+  scaler <- scales[[data_type]][[best_model_idx]]
+  # new_means <- apply(full_dataset_morphology_oos$data[,scaler$method$center],2,mean)
+  # new_stds <- apply(full_dataset_morphology_oos$data[,scaler$method$scale],2,sd)
+  # scaler$mean <- new_means
+  # scaler$std <- new_stds
+  d <- as.matrix(predict(scaler,full_dataset_morphology_oos$data))
   
   class_prediction <- predict(best_model,type = "class",newx = d)[,1]
   prob_prediction <- predict(best_model,type = "response",newx = d)[,1]
@@ -1122,6 +1173,7 @@ for (ID in IDs) {
   dat$obs <- factor(dat$obs,levels = reverse_label_conversion[[ID]])
   roc_curve <- roc(dat$obs,dat$prob)
   plot(dat$obs,dat$prob)
+  abline(h=0.5)
   plot(roc_curve)
   validation_aucs[[ID]] <- data.frame(
     auc_value = roc_curve$auc,
