@@ -1,0 +1,165 @@
+import sys
+import os
+
+slide_path = config['slide_path']
+output_path = config['output_path']
+qc_ckpt = config['qc_ckpt']
+fan_ckpt = config['fan_ckpt']
+unet_ckpt = config['unet_ckpt']
+dataset = config['dataset']
+rescale_factor = config['rescale_factor']
+
+fan_min_dict = {
+    'MLL':-0.06761881969869137,
+    'Adden1':-0.08244730792939663,
+    'Adden2':0.005589420534670354}
+fan_max_dict = {
+    'MLL':0.9912979602813721,
+    'Adden1': 1.0141363263130188,
+    'Adden2':0.9672043472528458}
+
+fan_min = fan_min_dict[dataset]
+fan_max = fan_max_dict[dataset]
+
+slide_id = slide_path.split('/')[-1].split('.')[0]
+
+try:
+    os.makedirs(output_path)
+except:
+    pass
+
+dir_dict = {
+    "quality_control":"_quality_control",
+    "segmented_rbc":"_segmented_rbc",
+    "segmented_wbc":"_segmented_wbc",
+    "aggregates_rbc":"_aggregates_rbc",
+    "aggregates_wbc":"_aggregates_wbc",
+    "checkpoints_common":"_checkpoints",
+    "checkpoints":"_checkpoints"}
+
+for k in dir_dict:
+    try:
+        folder = dir_dict[k]
+        os.makedirs(os.path.join(output_path,folder))
+    except:
+        pass
+
+localrules: all, quality_control, segment_characterise_wbc_rbc
+
+rule all:
+    input:
+        "{}/{}/{}.h5".format(output_path,dir_dict["aggregates_rbc"],slide_id),
+        "{}/{}/{}.h5".format(output_path,dir_dict["aggregates_wbc"],slide_id),
+        "{}/{}/{}_agg_wbc".format(output_path,dir_dict["checkpoints"],slide_id),
+        "{}/{}/{}_agg_rbc".format(output_path,dir_dict["checkpoints"],slide_id)
+
+rule quality_control:
+    input:
+        slide_path=slide_path
+    output:
+        qc_out="{}/{}/{}".format(output_path,dir_dict["quality_control"],slide_id),
+        checkpoint_qc="{}/{}/{}_qc".format(output_path,dir_dict["checkpoints_common"],slide_id)
+    message:
+        "Running slide through QC network."
+    params:
+        qc_ckpt=qc_ckpt
+    shell:
+        """
+        python3 scripts/python/quality_control.py \
+         --slide_path {input.slide_path}\
+         --input_height 512\
+         --input_width 512\
+         --checkpoint_path {params.qc_ckpt}\
+         --batch_size 32 > {output.qc_out} && touch {output.checkpoint_qc}
+        """
+
+rule segment_characterise_wbc_rbc:
+    input:
+        slide_path=slide_path,
+        qc_out="{}/{}/{}".format(output_path,dir_dict["quality_control"],slide_id),
+        checkpoint_qc="{}/{}/{}_qc".format(output_path,dir_dict["checkpoints_common"],slide_id)
+    output:
+        seg_rbc="{}/{}/{}.h5".format(output_path,dir_dict["segmented_rbc"],slide_id),
+        seg_wbc="{}/{}/{}.h5".format(output_path,dir_dict["segmented_wbc"],slide_id),
+        checkpoint_seg="{}/{}/{}_seg".format(output_path,dir_dict["checkpoints"],slide_id)
+    message:
+        "Segmenting WBC and RBC."
+    params:
+        log_id="WBC_RBC_SEGMENTATION_{}".format(slide_id),
+        n_cores=16,
+        mem=16000,
+        unet_ckpt=unet_ckpt,
+        fan_ckpt=fan_ckpt,
+        fan_min=fan_min,
+        fan_max=fan_max,
+        depth_mult=0.25,
+        n_features=32,
+        rescale_factor=rescale_factor
+    shell:
+        """
+        python3 scripts/python/segment_slide_wbc_rbc.py \
+            --csv_path {input.qc_out} \
+            --slide_path {input.slide_path} \
+            --fan_checkpoint_path {params.fan_ckpt} \
+            --unet_checkpoint_path {params.unet_ckpt} \
+            --wbc_output_path {output.seg_wbc} \
+            --rbc_output_path {output.seg_rbc} \
+            --depth_mult {params.depth_mult} \
+            --n_features {params.n_features} \
+            --fan_adjustment_min {params.fan_min} \
+            --fan_adjustment_max {params.fan_max} \
+            --rescale_factor {params.rescale_factor} && touch {output.checkpoint_seg}
+        """
+
+rule characterise_aggregate_rbc:
+    input:
+        seg_rbc="{}/{}/{}.h5".format(output_path,dir_dict["segmented_rbc"],slide_id),
+        checkpoint_seg="{}/{}/{}_seg".format(output_path,dir_dict["checkpoints"],slide_id)
+    output:
+        agg_rbc="{}/{}/{}.h5".format(output_path,dir_dict["aggregates_rbc"],slide_id),
+        checkpoint_agg_rbc="{}/{}/{}_agg_rbc".format(output_path,dir_dict["checkpoints"],slide_id)
+    message:
+        "Characterising and aggregating RBC."
+    params:
+        log_id="RBC_CHARACTERISATION_AGGREGATION_{}".format(slide_id),
+        n_cores=2,
+        mem=8000,
+        std_params="scripts/python/rbc_scaler_params_fan",
+        xgb_model="scripts/python/rbc_xgb_model_fan",
+        rescale_factor=rescale_factor
+    shell:
+        """
+        python3 scripts/python/characterise_cells.py \
+            --segmented_cells_path {input.seg_rbc} \
+            --cell_type rbc \
+            --n_processes {params.n_cores} \
+            --standardizer_params {params.std_params} \
+            --xgboost_model {params.xgb_model} \
+            --rescale_factor {params.rescale_factor} \
+            --output_path {output.agg_rbc} && touch {output.checkpoint_agg_rbc}
+        """
+
+rule characterise_aggregate_wbc:
+    input:
+        seg_wbc="{}/{}/{}.h5".format(output_path,dir_dict["segmented_wbc"],slide_id),
+        checkpoint_seg="{}/{}/{}_seg".format(output_path,dir_dict["checkpoints"],slide_id)
+    output:
+        agg_wbc="{}/{}/{}.h5".format(output_path,dir_dict["aggregates_wbc"],slide_id),
+        checkpoint_agg_wbc="{}/{}/{}_agg_wbc".format(output_path,dir_dict["checkpoints"],slide_id)
+    message:
+        "Characterising and aggregating WBC."
+    params:
+        log_id="WBC_CHARACTERISATION_AGGREGATION_{}".format(slide_id),
+        n_cores=2,
+        mem=8000,
+        rescale_factor=rescale_factor
+    shell:
+        """
+        python3 scripts/python/characterise_cells.py \
+            --segmented_cells_path {input.seg_wbc} \
+            --cell_type wbc \
+            --wbc_method traditional \
+            --n_processes {params.n_cores} \
+            --rescale_factor {params.rescale_factor} \
+            --output_path {output.agg_wbc} && touch {output.checkpoint_agg_wbc}
+        """
