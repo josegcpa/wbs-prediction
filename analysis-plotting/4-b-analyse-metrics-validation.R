@@ -1,5 +1,3 @@
-# TODO: independent validation cohort
-
 # setup -------------------------------------------------------------------
 
 source("function-library.R")
@@ -10,60 +8,58 @@ library(ggpubr)
 library(caret)
 library(pROC)
 
-read_prediction <- function(file_path) {
-  read_csv(file_path,
-           col_names = c("slide_id","labels","p1","p2")) %>%
-    mutate(task = gsub(".csv","",gsub("labels/","",labels))) %>%
+decode_model_name <- function(model_names) {
+  ifelse(
+    grepl("anemia_binary",model_names),"Anaemia classification",
+    ifelse(grepl("mds_binary",model_names),"SF3B1mut detection",
+           ifelse(grepl("disease_binary",model_names),
+                  "Disease classification",
+                  "Disease detection"))) %>%
     return
 }
 
-all_conditions <- rbind(
-  read_csv(
-    "data/all_classes.csv",progress = F,
-    col_types = c(col_character(),col_character(),col_character())) %>%
-    select(slide_id = id,fine_class,coarse_class) %>% 
-    mutate(fine_class = factor(fine_class_conversion[fine_class],fine_class_conversion),
-           coarse_class = factor(class_conversion[coarse_class],class_conversion)),
-  read_csv(
-    "data/all_classes_adden_1.csv",progress = F,
-    col_types = c(col_character(),col_character(),col_character())) %>%
-    select(slide_id,fine_class,coarse_class) %>% 
-    mutate(fine_class = factor(fine_class_conversion[fine_class],fine_class_conversion),
-           coarse_class = factor(class_conversion[coarse_class],class_conversion)) %>%
-    mutate(slide_id = gsub('\\.','',str_match(slide_id,'[0-9_-]+.'))),
-  read_csv(
-    "data/all_classes_adden_2.csv",progress = F,
-    col_types = c(col_character(),col_character(),col_character())) %>%
-    select(slide_id,fine_class,coarse_class) %>% 
-    mutate(fine_class = factor(fine_class_conversion[fine_class],fine_class_conversion),
-           coarse_class = factor(class_conversion[coarse_class],class_conversion))) %>%
-  mutate(fine_class = ifelse(fine_class == "SRSF2-mutant","Non-SF3B1-mutant",as.character(fine_class)))
+model_levels <- c("Disease detection","Disease classification","SF3B1mut detection","Anaemia classification")
 
-label_conversion <- list(
-  binary = c(
-    `Normal` = 0,
-    `SF3B1-mutant` = 1,`Non-SF3B1-mutant` = 1,
-    `Iron deficiency` = 1,`Megaloblastic` = 1),
-  disease_binary = c(
-    `Normal` = NA,
-    `SF3B1-mutant` = 1,`Non-SF3B1-mutant` = 1,
-    `Iron deficiency` = 0,`Megaloblastic` = 0),
-  mds_binary = c(
-    `Normal` = NA,
-    `SF3B1-mutant` = 1,`Non-SF3B1-mutant` = 0,
-    `Iron deficiency` = NA,`Megaloblastic` = NA),
-  anemia_binary = c(
-    `Normal` = NA,
-    `SF3B1-mutant` = NA,`Non-SF3B1-mutant` = NA,
-    `Iron deficiency` = 0,`Megaloblastic` = 1)
-)
-
-all_roc_validation <- list()
+metrics_cv <- read_csv("data_output/best_models_so.csv") %>%
+  select(-X1,-nvc,-multi_objective)
+all_auc_validation <- list()
 par(mfrow=c(2,2))
-for (file_path in list.files("../mile-vice/predictions/",full.names = T,pattern = "adden_2")) {
-  tmp <- merge(read_prediction(file_path),all_conditions,all=F,by="slide_id") %>%
-    mutate(labels_binary = label_conversion[[task[1]]][as.character(fine_class)]) %>%
-    subset(!is.na(labels_binary))
-  print(file_path)
-  print(plot(roc(tmp$labels_binary,tmp$p2)))
+for (file_path in list.files("../mile-vice/ev-scores/",pattern = "cv_subset\\.",full.names = T)) {
+  data_type <- ifelse(grepl('bc',file_path),"Morphology + B.C.","Morphology")
+  tmp <- read_csv(file_path,col_names = c("model_id","fold","metric","value"))
+  N <- tmp$value[tmp$metric == "N_0"]
+  tmp <- tmp %>%
+    subset(metric == "AUC_0")
+  all_auc_validation[[file_path]] <- data.frame(
+    task = decode_model_name(tmp$model_id),dataset = data_type,value = tmp$value,N=N)
 }
+
+all_auc_validation_df <- mutate(do.call(rbind,all_auc_validation),set = "External validation")
+
+ggplot() + 
+  geom_bar(data = metrics_cv,aes(x = value,y = task),stat = "identity") + 
+  geom_point()
+
+metrics_cv %>% 
+  ggplot(aes(x = factor(task,rev(model_levels)),y = value, fill = dataset)) + 
+  geom_bar(stat = "identity",position = position_dodge(width = 0.9)) +
+  geom_linerange(data = all_auc_validation_df,position = position_dodge(width = 0.9),
+                 aes(ymin = value - 1/sqrt(N),
+                     ymax = ifelse(value + 1/sqrt(N) > 1,1,value + 1/sqrt(N))),
+                 alpha = 1,size = 0.5,shape = 5) + 
+  geom_point(data = all_auc_validation_df,position = position_dodge(width = 0.9),
+             alpha = 1,size = 2,shape = 18,colour = "white") + 
+  geom_point(data = all_auc_validation_df,position = position_dodge(width = 0.9),
+             alpha = 1,size = 2,shape = 5) + 
+  theme_pretty(base_size = 6) + 
+  scale_fill_manual(values = c("red4","orange"),name = NULL) + 
+  theme(legend.position = "bottom",
+        axis.title.y = element_blank(),
+        legend.key.height = unit(0.1,"cm"),
+        legend.key.width = unit(0.2,"cm")) +
+  scale_x_discrete() +
+  ylab("Area under the curve") +
+  coord_flip(ylim = c(0.2,1)) + 
+  scale_y_continuous(expand = c(0,0,0.02,0.02)) + 
+  scale_color_discrete(guide = F) + 
+  ggsave(filename = "figures/auc-bars-w-validation-mile-vice.pdf",height=1.7,width=3)

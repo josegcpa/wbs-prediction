@@ -1,5 +1,3 @@
-# TODO: look at feature specific importances, get some examples, see how it goes
-
 # setup -------------------------------------------------------------------
 
 source("function-library.R")
@@ -87,6 +85,54 @@ all_conditions <- rbind(
            coarse_class = factor(class_conversion[coarse_class],class_conversion))
 )
 
+rbc_counts <-  rbind(
+  read_csv(
+    "datasets/rbc_counts.csv",
+    col_names = c("slide_id","counts"),
+    col_types = c(col_character(),col_double())) %>%
+    cbind(dataset = "MLLC"),
+  read_csv(
+    "datasets/rbc_adden_1_counts.csv",
+    col_names = c("slide_id","counts"),
+    col_types = c(col_character(),col_double()))  %>%
+    cbind(dataset = "AC1"),
+  read_csv(
+    "datasets/rbc_adden_2_counts.csv",
+    col_names = c("slide_id","counts"),
+    col_types = c(col_character(),col_double())) %>%
+    cbind(dataset = "AC2")
+) %>%
+  subset(!(slide_id %in% poor_quality_slides)) %>%
+  group_by(slide_id,dataset) %>%
+  summarise(n_rbc = sum(counts))
+
+wbc_counts <-  rbind(
+  read_csv(
+    "datasets/wbc_counts.csv",
+    col_names = c("slide_id","counts"),
+    col_types = c(col_character(),col_double())) %>%
+    cbind(dataset = "MLLC"),
+  read_csv(
+    "datasets/wbc_adden_1_counts.csv",
+    col_names = c("slide_id","counts"),
+    col_types = c(col_character(),col_double()))  %>%
+    cbind(dataset = "AC1"),
+  read_csv(
+    "datasets/wbc_adden_2_counts.csv",
+    col_names = c("slide_id","counts"),
+    col_types = c(col_character(),col_double())) %>%
+    cbind(dataset = "AC2")
+) %>%
+  subset(!(slide_id %in% poor_quality_slides)) %>%
+  group_by(slide_id,dataset) %>%
+  summarise(n_wbc = sum(counts))
+
+# select slides with > 50 RBC and > 50 WBC
+representative_slides <- merge(rbc_counts,wbc_counts,by = c("slide_id","dataset")) %>% 
+  subset(n_rbc > 50 & n_wbc > 50) %>% 
+  select(slide_id) %>%
+  unlist
+
 blood_parameters <- read_csv(
   "data/blood_count_data.csv",
   col_types = cols_only(
@@ -101,7 +147,7 @@ demographic_data <- read_csv(
   select(slide_id = id,sex,age)
 
 wbc_all_cells_summaries <- read_csv(
-  "../mile-vice/data_output/wbc_summaries.csv",
+  "datasets/wbc_summaries.csv",
   col_names = c("slide_id",features_all,features_nuclear,"f"),
   col_types = c(list(col_character()),
                 replicate(length(c(features_all,features_nuclear)),col_double()),
@@ -116,10 +162,30 @@ wbc_all_cells_summaries <- read_csv(
   mutate(fine_class = factor(
     as.character(fine_class),
     levels = fine_simple_levels)) %>%
-  subset(!(slide_id %in% poor_quality_slides))
+  subset(!(slide_id %in% poor_quality_slides)) %>% 
+  subset(slide_id %in% representative_slides)
+
+wbc_adden_1_cells_summaries <- read_csv(
+  "datasets/wbc_adden_1_summaries.csv",
+  col_names = c("slide_id",features_all,features_nuclear,"f"),
+  col_types = c(list(col_character()),
+                replicate(length(c(features_all,features_nuclear)),col_double()),
+                list(col_character()))) %>%
+  merge(all_conditions,by = "slide_id") %>% 
+  as_tibble() %>% 
+  mutate(fine_class = ifelse(coarse_class == "MDS",
+                             ifelse(grepl("SF3B1",fine_class),
+                                    "SF3B1-mutant",
+                                    "Non-SF3B1-mutant"),
+                             as.character(fine_class))) %>%
+  mutate(fine_class = factor(
+    as.character(fine_class),
+    levels = fine_simple_levels)) %>%
+  subset(!(slide_id %in% poor_quality_slides)) %>% 
+  subset(slide_id %in% representative_slides)
 
 rbc_all_cells_summaries <- read_csv(
-  "../mile-vice/data_output/rbc_summaries.csv",
+  "datasets/rbc_summaries.csv",
   col_names = c("slide_id",features_all,"f"),
   col_types = c(list(col_character()),
                 replicate(length(c(features_all)),col_double()),
@@ -134,7 +200,27 @@ rbc_all_cells_summaries <- read_csv(
   mutate(fine_class = factor(
     as.character(fine_class),
     levels = fine_simple_levels)) %>%
-  subset(!(slide_id %in% poor_quality_slides))
+  subset(!(slide_id %in% poor_quality_slides)) %>% 
+  subset(slide_id %in% representative_slides)
+
+rbc_adden_1_cells_summaries <- read_csv(
+  "datasets/rbc_adden_1_summaries.csv",
+  col_names = c("slide_id",features_all,"f"),
+  col_types = c(list(col_character()),
+                replicate(length(c(features_all)),col_double()),
+                list(col_character()))) %>%
+  merge(all_conditions,by = "slide_id") %>%
+  as_tibble() %>% 
+  mutate(fine_class = ifelse(coarse_class == "MDS",
+                             ifelse(grepl("SF3B1",fine_class),
+                                    "SF3B1-mutant",
+                                    "Non-SF3B1-mutant"),
+                             as.character(fine_class))) %>%
+  mutate(fine_class = factor(
+    as.character(fine_class),
+    levels = fine_simple_levels)) %>%
+  subset(!(slide_id %in% poor_quality_slides)) %>% 
+  subset(slide_id %in% representative_slides)
 
 IDs <- c("disease_detection","disease_classification","sf3b1","anaemia_classification")
 
@@ -180,13 +266,17 @@ rf_models <- list(
 
 # data splitting ----------------------------------------------------------
 
-wbc_feat_cols <- 1:ncol(wbc_all_cells_summaries) #c(1:19,27,40:50,61:64)
-rbc_feat_cols <- 1:ncol(rbc_all_cells_summaries) #c(1:19,27,39:46)
+wbc_feat_cols <- 1:ncol(wbc_all_cells_summaries)
+rbc_feat_cols <- 1:ncol(rbc_all_cells_summaries)
 
 wbc_all_cells_summaries <- wbc_all_cells_summaries[,wbc_feat_cols] %>%
   gather(key = "key",value = "value",-slide_id,-f,-fine_class,-coarse_class)
-
 rbc_all_cells_summaries <- rbc_all_cells_summaries[,rbc_feat_cols] %>%
+  gather(key = "key",value = "value",-slide_id,-f,-fine_class,-coarse_class)
+
+wbc_adden_1_cells_summaries <- wbc_adden_1_cells_summaries[,wbc_feat_cols] %>%
+  gather(key = "key",value = "value",-slide_id,-f,-fine_class,-coarse_class)
+rbc_adden_1_cells_summaries <- rbc_adden_1_cells_summaries[,rbc_feat_cols] %>%
   gather(key = "key",value = "value",-slide_id,-f,-fine_class,-coarse_class)
 
 wbc_dataset_morphology <- rearrange_data(
@@ -194,9 +284,19 @@ wbc_dataset_morphology <- rearrange_data(
 rbc_dataset_morphology <- rearrange_data(
   rbc_all_cells_summaries,id = "RBC")
 
+wbc_dataset_morphology_adden_1 <- rearrange_data(
+  wbc_adden_1_cells_summaries,id = "WBC")
+rbc_dataset_morphology_adden_1 <- rearrange_data(
+  rbc_adden_1_cells_summaries,id = "RBC")
+
 full_dataset_morphology <- merge(
   wbc_dataset_morphology,
   rbc_dataset_morphology,
+  by = c("slide_id","coarse_class","fine_class"))
+
+full_dataset_morphology_adden_1 <- merge(
+  wbc_dataset_morphology_adden_1,
+  rbc_dataset_morphology_adden_1,
   by = c("slide_id","coarse_class","fine_class"))
 
 full_dataset <- merge(
@@ -254,6 +354,7 @@ if (file.exists("data_output/folds_preproc.RDS")) {
 }
 
 # model training (glmnet) -------------------------------------------------
+
 
 if (file.exists("data_output/glmnet_models.rds")) {
   glmnet_models <- readRDS("data_output/glmnet_models.rds")
@@ -415,7 +516,8 @@ if (file.exists("data_output/glmnet_models_multiclass.rds")) {
       glmnet_multiclass_models[[data_type]][[i]]$metrics <- list(
         Training = list(
           ConfusionMatrix = confusionMatrix(
-            factor(reverse_label_conversion$multiclass_classification[as.numeric(train_class_pred)],
+            factor(reverse_label_conversion$multiclass_classification[
+              as.numeric(train_class_pred)],
                    levels = reverse_label_conversion$multiclass_classification),
             factor(reverse_label_conversion$multiclass_classification[training_y],
                    levels = reverse_label_conversion$multiclass_classification)),
@@ -425,7 +527,8 @@ if (file.exists("data_output/glmnet_models_multiclass.rds")) {
             levels = reverse_label_conversion$multiclass_classification)),
         Validation = list(
           ConfusionMatrix = confusionMatrix(
-            factor(reverse_label_conversion$multiclass_classification[as.numeric(test_class_pred)],
+            factor(reverse_label_conversion$multiclass_classification[
+              as.numeric(test_class_pred)],
                    levels = reverse_label_conversion$multiclass_classification),
             factor(reverse_label_conversion$multiclass_classification[testing_y],
                    levels = reverse_label_conversion$multiclass_classification)),
@@ -586,16 +689,15 @@ all_metrics_df_long %>%
                        labels = c("Disease detection","Disease classification",
                                   "SF3B1mut detection","Anaemia classification") %>%
                          rev)) %>%
-  group_by(Set,task,key,Model,data_type) %>%
-  summarise(m = mean(value),se = sd(value),.groups = "drop") %>% 
   subset(Set == "Validation") %>% 
   subset(data_type == "full") %>% 
   mutate(data_type = factor(data_type,levels = c("bcdem","morphology","full"),
                             labels = c("B.C.","Morphology","Morphology + B.C."))) %>%
-  ggplot(aes(x = task,y = m,ymin = m-se,ymax = m+se,
+  ggplot(aes(x = task,y = value,
              colour = Model,group = paste(Model,Set,data_type))) +
-  geom_point(position = position_dodge(width = 0.5),shape = 3) + 
-  geom_linerange(position = position_dodge(width = 0.5)) +
+  geom_point(position = position_dodge(width = 0.5),shape = 16) + 
+  geom_boxplot(outlier.alpha = 0,alpha = 0.5,
+               size = 0.25,aes(group = paste(task,Model))) +
   facet_wrap(~ key,scales = "free_y",ncol = 2) + 
   theme_pretty(base_size = 6) +
   theme(axis.title = element_blank(),
@@ -604,6 +706,35 @@ all_metrics_df_long %>%
   scale_y_continuous(expand = c(0,0,0,0.01)) + 
   coord_flip(ylim = c(0,1)) + 
   ggsave("figures/rf-glmnet-all-metrics.pdf",height = 4,width = 4)
+
+all_metrics_df_long %>%
+  mutate(task = factor(task,
+                       levels = c("disease_detection","disease_classification",
+                                  "sf3b1","anaemia_classification") %>%
+                         rev,
+                       labels = c("Disease detection","Disease classification",
+                                  "SF3B1mut detection","Anaemia classification") %>%
+                         rev)) %>%
+  subset(Set == "Validation") %>% 
+  subset(data_type == "full") %>% 
+  mutate(data_type = factor(data_type,levels = c("bcdem","morphology","full"),
+                            labels = c("B.C.","Morphology","Morphology + B.C."))) %>%
+  subset(key == 'AUC') %>%
+  ggplot(aes(x = task,y = value,
+             colour = Model,group = paste(Model,Set,data_type))) +
+  geom_point(position = position_dodge(width = 0.9),shape = 16,
+             size = 0.5) + 
+  stat_summary(fun = mean,position = position_dodge(width = 0.9),
+               geom = "point",
+               size = 1,shape = 5,alpha = 0.5) +
+  theme_pretty(base_size = 6) +
+  theme(axis.title.y = element_blank(),
+        legend.position = "bottom") +
+  ylab("AUC") + 
+  scale_colour_manual(values = c("green4","red4"),name = NULL) + 
+  scale_y_continuous(expand = c(0,0,0,0.01)) + 
+  coord_flip(ylim = c(0.5,1)) + 
+  ggsave("figures/rf-glmnet-auc.pdf",height = 1.5,width = 2.5)
 
 all_metrics_df_long %>%
   mutate(task = factor(task,
@@ -718,7 +849,6 @@ for (data_type in names(glmnet_multiclass_models)) {
   all_responses <- lapply(glmnet_multiclass_models[[data_type]],function(x) x$metrics$Validation$AUC$response) %>%
     do.call(what = c)
   tmp <- multiclass.roc(all_responses,all_predictors)
-  all_roc_multiclass_comparisons 
 
   all_roc_multiclass_comparisons[[data_type]] <- lapply(
     names(tmp$rocs),
@@ -760,6 +890,48 @@ all_roc_multiclass_comparisons_df %>%
   ylab("") + 
   ggsave("figures/auc-multiclass-comparisons.pdf",height=1.5,width=3.3)
 
+multi_tile_data <- all_roc_multiclass_comparisons_df %>%
+  mutate(A_numeric = as.numeric(A),B_numeric = as.numeric(B),
+         n = (as.numeric(data_type) - 1)/3 + 1/6) 
+
+numeric_correspondence_A <- multi_tile_data %>% 
+  select(A_numeric,A) %>%
+  distinct %>%
+  arrange(A_numeric) %>%
+  select(A) %>%
+  unlist
+
+numeric_correspondence_B <- multi_tile_data %>% 
+  select(B_numeric,B) %>%
+  distinct %>%
+  arrange(B_numeric) %>%
+  select(B) %>%
+  unlist
+
+out_lines <- multi_tile_data %>%
+  select(A_numeric,B_numeric) %>%
+  distinct
+
+multi_tile_data %>%
+  ggplot(aes(x = A_numeric + n - 0.5,y = B_numeric,width = 1/3,height = 1,fill = auc)) + 
+  geom_tile(size = 0.25,colour = "black") + 
+  geom_label(aes(label = sprintf("%.2f",auc)),size=2,fill="white",
+             label.size = unit(0,"cm"),label.r = unit(0,"cm"),
+             label.padding = unit(0.05,"cm"),alpha = 0.75) + 
+  geom_tile(aes(x = A_numeric,y = B_numeric),inherit.aes = F,data = out_lines,
+            fill = NA,colour = "black",size = 1) + 
+  scale_fill_gradient2(low="lightgoldenrod1",mid="goldenrod",high="red4",
+                       midpoint = 0.7,
+                       name = "AUC",breaks = c(0.3,0.5,0.7,0.9)) +
+  theme_pretty(base_size = 6) + 
+  theme(axis.title = element_blank(),legend.key.height = unit(0.35,"cm"),
+        legend.key.width = unit(0.1,"cm")) + 
+  scale_x_continuous(breaks = c(1,2,3,4),
+                   labels = numeric_correspondence_A,expand = c(0,0)) +
+  scale_y_continuous(breaks = c(1,2,3,4),
+                   labels = numeric_correspondence_B,expand = c(0,0)) +
+  ggsave("figures/auc-multiclass-comparisons-heatmap.pdf",height=1,width=5)
+
 all_roc_multiclass_df %>%
   ggplot(aes(x = data_type,y = auc,fill = data_type)) +
   geom_bar(stat = "identity") +
@@ -768,7 +940,7 @@ all_roc_multiclass_df %>%
   ylab("Average multi-class AUC") + 
   scale_y_continuous(expand = c(0,0,0.01,0)) +
   theme_pretty(base_size = 6) +
-  coord_flip(ylim = c(0.7,1)) + 
+  coord_flip(ylim = c(0.5,1)) + 
   ggsave("figures/auc-multiclass.pdf",height=0.6,width=2)
 
 # feature importance ------------------------------------------------------
@@ -889,7 +1061,7 @@ for (data_type in c("bcdem","morphology","full")) {
 
 feature_associations_df <- feature_associations %>%
   do.call(what = rbind) %>%
-  subset(glmnet > 0 & RRF > 0) %>%
+  #subset(glmnet > 0 & RRF > 0) %>%
   mutate(task = factor(task,
                        levels = c("disease_detection","disease_classification",
                                   "sf3b1","anaemia_classification"),
@@ -951,7 +1123,7 @@ feature_associations_df %>%
 feature_importance_plot_data <- feature_associations_df %>%
   mutate(features_pretty = features_conversion[as.character(features_raw)]) %>%
   mutate(features_pretty = factor(features_pretty,levels = rev(features_conversion))) %>%
-  mutate(features_pretty = gsub("\n","",features_pretty)) %>%
+  mutate(features_pretty = gsub("\n"," ",features_pretty)) %>%
   subset(data_type == "full") %>%
   mutate(grouping = ifelse(
     cell_type == "B.C.",cell_type,
@@ -967,9 +1139,10 @@ for (x in c("Anaemia classification","Disease classification",
   X <- feature_importance_plot_data %>% 
     subset(task == x) %>% 
     group_by(grouping) %>%
-    mutate(l = sort(glmnet,decreasing=T)[15]) %>%
+    mutate(l = sort(glmnet,decreasing=T)[5]) %>%
     mutate(l = ifelse(is.na(l),0,l)) %>% 
-    filter(glmnet >= l) 
+    filter(glmnet >= l)  %>%
+    mutate(grouping_ = gsub(' ','\n',grouping))
   X %>%
     ggplot(aes(x = feature_idx,y = glmnet*sign_glmnet,colour = grouping)) + 
     geom_hline(yintercept = 0,size = 0.25,linetype = 3) +
@@ -981,11 +1154,53 @@ for (x in c("Anaemia classification","Disease classification",
     theme(axis.title.y = element_blank(),
           legend.position = "bottom",
           legend.key.size = unit(0.1,"cm")) + 
-    facet_grid(grouping ~ .,scales = "free_y",space = "free_y") +
+    facet_grid(grouping_ ~ .,scales = "free_y",space = "free_y") +
     scale_colour_manual(values = c("green4","red4","red1","purple4","purple1"),name = NULL) +
     guides(colour = guide_legend(nrow = 3)) +
     ggsave(sprintf("figures/feature-importance-glmnet-%s.pdf",gsub(" ","-",tolower(x))),
-           width = 2.5,height = 1.2 + 5. * nrow(X) / 63)}
+           width = 2.5,height = 1.2 + 5. * nrow(X) / 63)
+}
+
+feature_importance_plot_data_morphology <- feature_associations_df %>%
+  mutate(features_pretty = features_conversion[as.character(features_raw)]) %>%
+  mutate(features_pretty = factor(features_pretty,levels = rev(features_conversion))) %>%
+  mutate(features_pretty = gsub("\n"," ",features_pretty)) %>%
+  subset(data_type == "morphology") %>%
+  mutate(grouping = ifelse(
+    cell_type == "B.C.",cell_type,
+    sprintf("%s (%s)",cell_type,tolower(moment)))) %>% 
+  ungroup %>% 
+  arrange(glmnet * sign_glmnet) %>%
+  mutate(feature_idx = as.factor(1:length(features_pretty)))
+feature_correspondence <- feature_importance_plot_data_morphology$features_pretty
+names(feature_correspondence) <- feature_importance_plot_data_morphology$feature_idx
+
+for (x in c("Anaemia classification","Disease classification",
+            "SF3B1mut detection","Disease detection")) {
+  X <- feature_importance_plot_data_morphology %>% 
+    subset(task == x) %>% 
+    group_by(grouping) %>%
+    mutate(l = sort(glmnet,decreasing=T)[5]) %>%
+    mutate(l = ifelse(is.na(l),0,l)) %>% 
+    filter(glmnet >= l)  %>%
+    mutate(grouping_ = gsub(' ','\n',grouping))
+  X %>%
+    ggplot(aes(x = feature_idx,y = glmnet*sign_glmnet,colour = grouping)) + 
+    geom_hline(yintercept = 0,size = 0.25,linetype = 3) +
+    geom_point(size = 0.5) + 
+    coord_flip() +
+    scale_x_discrete(labels = function(x) feature_correspondence[x]) +
+    theme_pretty(base_size = 6) + 
+    ylab("glmnet coefficent") +
+    theme(axis.title.y = element_blank(),
+          legend.position = "bottom",
+          legend.key.size = unit(0.1,"cm")) + 
+    facet_grid(grouping_ ~ .,scales = "free_y",space = "free_y") +
+    scale_colour_manual(values = c("red4","red1","purple4","purple1"),name = NULL) +
+    guides(colour = guide_legend(nrow = 3)) +
+    ggsave(sprintf("figures/feature-importance-glmnet-%s-morphology.pdf",gsub(" ","-",tolower(x))),
+           width = 2.5,height = 1.2 + 5. * nrow(X) / 63)
+}
 
 feature_no <- seq(1,length(features_conversion))
 names(feature_no) <- names(features_conversion)
@@ -1034,7 +1249,8 @@ for (ID in IDs) {
   D <- as.matrix(predict(scales[[d]][[idx]],full_dataset_collection$data[[d]]))
   coefficients <- as.matrix(coef(glmnet_models[[d]][[ID]][[idx]]$model))
   coefficients <- coefficients[2:nrow(coefficients),]
-  fx <- D * coefficients
+  coefficients <- matrix(coefficients,nrow=1)
+  fx <- sweep(D,2,coefficients,'*')
   var_group_importance[[ID]] <- data.frame(
     WBCMeans = rowSums(fx[,grepl("means\\.WBC",colnames(fx))]),
     WBCVars = rowSums(fx[,grepl("vars\\.WBC",colnames(fx))]),
@@ -1052,6 +1268,7 @@ var_group_importance %>%
   do.call(what = rbind) %>% 
   gather(key = "key",value = "value",-task) %>%
   group_by(task) %>%
+  mutate(value = abs(value)) %>%
   mutate(S = sum(value)) %>%
   mutate(Proportions = value / sum(value)) %>%
   mutate(S = sum(value)^(1/6)) %>%
@@ -1082,7 +1299,7 @@ var_group_importance %>%
 # out-of-sample validation ------------------------------------------------
 
 wbc_cells_summaries_oos <- read_csv(
-  "../mile-vice/data_output/wbc_adden_2_summaries.csv",
+  "datasets/wbc_adden_2_summaries.csv",
   col_names = c("slide_id",features_all,features_nuclear,"f"),
   col_types = c(list(col_character()),
                 replicate(length(c(features_all,features_nuclear)),col_double()),
@@ -1097,10 +1314,11 @@ wbc_cells_summaries_oos <- read_csv(
   mutate(fine_class = factor(
     as.character(fine_class),
     levels = fine_simple_levels)) %>%
-  subset(!(slide_id %in% poor_quality_slides))
+  subset(!(slide_id %in% poor_quality_slides)) %>%
+  subset(slide_id %in% representative_slides)
 
 rbc_cells_summaries_oos <- read_csv(
-  "../mile-vice/data_output/rbc_adden_2_summaries.csv",
+  "datasets/rbc_adden_2_summaries.csv",
   col_names = c("slide_id",features_all,"f"),
   col_types = c(list(col_character()),
                 replicate(length(c(features_all)),col_double()),
@@ -1115,7 +1333,8 @@ rbc_cells_summaries_oos <- read_csv(
   mutate(fine_class = factor(
     as.character(fine_class),
     levels = fine_simple_levels)) %>%
-  subset(!(slide_id %in% poor_quality_slides))
+  subset(!(slide_id %in% poor_quality_slides)) %>%
+  subset(slide_id %in% representative_slides)
 
 wbc_cells_summaries_oos <- wbc_cells_summaries_oos[,wbc_feat_cols] %>%
   gather(key = "key",value = "value",-slide_id,-f,-fine_class,-coarse_class)
@@ -1128,67 +1347,116 @@ wbc_dataset_morphology_oos <- rearrange_data(
 rbc_dataset_morphology_oos <- rearrange_data(
   rbc_cells_summaries_oos,"RBC")
 
-full_dataset_morphology_oos <- merge(
+blood_count_data_oos <- read_csv(
+  "data/blood_count_data_adden_2.csv",
+  col_types = cols_only(
+    id = col_character(),wbc_ul = col_double(),
+    hb_g_dl = col_double(),plt_ul = col_double())) %>%
+  select(slide_id = id,wbc_ul,hb_g_dl,plt_ul)
+
+repeated_slides <- c(
+  "SF3B1_5_B","SF3B1_9_2A","SF3B1_14B",
+  "Megaloblastic_7")
+
+full_dataset_oos <- merge(
   wbc_dataset_morphology_oos,
   rbc_dataset_morphology_oos,
-  by = c("slide_id","coarse_class","fine_class"))
+  by = c("slide_id","coarse_class","fine_class")) %>%
+  merge(blood_count_data_oos,by = "slide_id") %>% 
+  mutate(wbc_ul.BCDEM = wbc_ul*1000,
+         hb_g_dl.BCDEM = hb_g_dl/10,
+         plt_ul.BCDEM = plt_ul*1000) %>%
+  select(-wbc_ul,-hb_g_dl,-plt_ul) %>%
+  na.omit() %>%
+  subset(!(slide_id %in% repeated_slides))
 
-full_dataset_morphology_oos <- list(
-  data = select(full_dataset_morphology_oos,-slide_id,-coarse_class,-fine_class),
-  coarse_labels = full_dataset_morphology_oos$coarse_class,
-  fine_labels = full_dataset_morphology_oos$fine_class,
-  slide_id = full_dataset_morphology_oos$slide_id
-)
+full_dataset_collection_oos <- list(
+  data = list(
+    morphology = select(full_dataset_oos,-slide_id,-coarse_class,-fine_class,
+                        -wbc_ul.BCDEM,-hb_g_dl.BCDEM,-plt_ul.BCDEM),
+    full = select(full_dataset_oos,-slide_id,-coarse_class,-fine_class),
+    bcdem = select(full_dataset_oos,wbc_ul.BCDEM,hb_g_dl.BCDEM,plt_ul.BCDEM)
+  ),
+  coarse_labels = full_dataset_oos$coarse_class,
+  fine_labels = full_dataset_oos$fine_class,
+  slide_id = full_dataset_oos$slide_id) 
 
-data_type <- "morphology"
+data_types <- c("morphology","full","bcdem")
 
 validation_aucs <- list()
 all_roc_val <- list()
 
-par(mfrow = c(2,4),mar = c(2,0,2,0))
-for (ID in IDs) {
-  best_model_idx <- lapply(
-    glmnet_models[[data_type]][[ID]],
-    function(x) c(
-      as.numeric(x$metrics$Validation$AUC$auc))) %>%
-    which.max
-  best_model <- glmnet_models[[data_type]][[ID]][[best_model_idx]]$model
-  ground_truth <- label_conversion[[ID]][full_dataset_morphology_oos$fine_labels]
-  scaler <- scales[[data_type]][[best_model_idx]]
-  # new_means <- apply(full_dataset_morphology_oos$data[,scaler$method$center],2,mean)
-  # new_stds <- apply(full_dataset_morphology_oos$data[,scaler$method$scale],2,sd)
-  # scaler$mean <- new_means
-  # scaler$std <- new_stds
-  d <- as.matrix(predict(scaler,full_dataset_morphology_oos$data))
-  
-  class_prediction <- predict(best_model,type = "class",newx = d)[,1]
-  prob_prediction <- predict(best_model,type = "response",newx = d)[,1]
-  dat <- data.frame(
-    pred = reverse_label_conversion[[ID]][as.numeric(class_prediction)+1],
-    obs = reverse_label_conversion[[ID]][ground_truth+1],
-    prob = prob_prediction
-  ) %>%
-    na.omit
-  dat$pred <- factor(dat$pred,levels = reverse_label_conversion[[ID]])
-  dat$obs <- factor(dat$obs,levels = reverse_label_conversion[[ID]])
-  roc_curve <- roc(dat$obs,dat$prob)
-  plot(dat$obs,dat$prob)
-  abline(h=0.5)
-  plot(roc_curve)
-  validation_aucs[[ID]] <- data.frame(
-    auc_value = roc_curve$auc,
-    task = c(disease_detection = "Disease detection",
-             disease_classification = "Disease classification",
-             sf3b1 = "SF3B1mut detection",
-             anaemia_classification = "Anaemia classification")[ID],
-    data_type = "Morphology"
-  )
-  tmp <- get.coords.for.ggplot(roc_curve) %>%
-    as.tibble %>%
-    mutate(data_type = data_type)
-  all_roc_val[[paste(data_type,ID,sep="_")]] <- tmp
-  all_roc_val[[paste(data_type,ID,sep="_")]]$task <- ID
-  all_roc_val[[paste(data_type,ID,sep="_")]]$auc_value <- full_roc$auc
+match_min_max <- function(df1,df2) {
+  # match the min and max of all columns in df2 to those of d1
+  CC <- colnames(df2)
+  m <- matrix(apply(df2,2,min,na.rm=T),nrow=1)
+  M <- matrix(apply(df2,2,max,na.rm=T),nrow=1)
+  df2 <- t(apply(df2,1,function(x) (x - m)/(M-m)))
+  m <- matrix(apply(df1,2,min,na.rm=T),nrow=1)
+  M <- matrix(apply(df1,2,max,na.rm=T),nrow=1)
+  r <- M-m
+  df2 <- t(apply(df2,1,function(x) x * r + m))
+  df2 <- as.data.frame(df2)
+  colnames(df2) <- CC
+  return(df2)
+}
+
+reparametrize_scaler <- function(full_ds,scaler) {
+  col_idx <- which(colnames(full_ds$data$full) %in% scaler$method$remove)
+  d <- full_ds$data$full[,-col_idx]
+  N <- names(scaler$mean) %>%
+    Filter(f = function(x) !grepl("BCDEM",x))
+  scaler$mean[N] <- colMeans(d[,N])
+  scaler$std[N] <- apply(d[,N],2,sd)
+  return(scaler)
+}
+
+for (data_type in data_types) {
+  par(mfrow = c(2,4),mar = c(2,0,2,0))
+  for (ID in IDs) {
+    best_model_idx <- lapply(
+      glmnet_models[[data_type]][[ID]],
+      function(x) c(
+        as.numeric(x$metrics$Validation$AUC$auc))) %>%
+      which.max
+    best_model <- glmnet_models[[data_type]][[ID]][[best_model_idx]]$model
+    ground_truth <- label_conversion[[ID]][full_dataset_collection_oos$fine_labels]
+    scaler <- scales[[data_type]][[best_model_idx]]
+    d <- full_dataset_collection_oos$data[[data_type]]
+    #d <- match_min_max(full_dataset_collection$data[[data_type]],d)
+    #scaler <- reparametrize_scaler(full_dataset_collection_oos,scaler)
+    d <- as.matrix(predict(scaler,d))
+    
+    class_prediction <- predict(best_model,type = "class",newx = d)[,1]
+    prob_prediction <- predict(best_model,type = "response",newx = d)[,1]
+    dat <- data.frame(
+      pred = reverse_label_conversion[[ID]][as.numeric(class_prediction)+1],
+      obs = reverse_label_conversion[[ID]][ground_truth+1],
+      prob = prob_prediction
+    ) %>%
+      na.omit
+    dat$pred <- factor(dat$pred,levels = reverse_label_conversion[[ID]])
+    dat$obs <- factor(dat$obs,levels = reverse_label_conversion[[ID]])
+    roc_curve <- roc(dat$obs,dat$prob)
+    plot(dat$obs,dat$prob)
+    abline(h=0.5)
+    plot(roc_curve)
+    validation_aucs[[paste(data_type,ID,sep="_")]] <- data.frame(
+      auc_value = roc_curve$auc,
+      task = c(disease_detection = "Disease detection",
+               disease_classification = "Disease classification",
+               sf3b1 = "SF3B1mut detection",
+               anaemia_classification = "Anaemia classification")[ID],
+      data_type = data_type,
+      N = nrow(dat)
+    )
+    tmp <- get.coords.for.ggplot(roc_curve) %>%
+      as.tibble %>%
+      mutate(data_type = data_type)
+    all_roc_val[[paste(data_type,ID,sep="_")]] <- tmp
+    all_roc_val[[paste(data_type,ID,sep="_")]]$task <- ID
+    all_roc_val[[paste(data_type,ID,sep="_")]]$auc_value <- full_roc$auc
+  }
 }
 
 all_roc_val_df <- do.call(rbind,all_roc_val) %>%
@@ -1202,7 +1470,9 @@ all_roc_val_df <- do.call(rbind,all_roc_val) %>%
   mutate(data_type = factor(data_type,levels = c("bcdem","morphology","full"),
                             labels = c("B.C.","Morphology","Morphology + B.C.")))
 
-validation_aucs_df <- do.call(what = rbind,validation_aucs)
+validation_aucs_df <- do.call(what = rbind,validation_aucs) %>%
+  mutate(data_type = factor(data_type,levels = c("bcdem","morphology","full"),
+                            labels = c("B.C.","Morphology","Morphology + B.C.")))
 
 rbind(
   mutate(all_roc_val_df,type = "Independent validation set"),
@@ -1230,6 +1500,10 @@ all_roc_df %>%
   distinct %>%
   ggplot(aes(x = reorder(task,desc(task)),y = auc_value, fill = data_type)) + 
   geom_bar(stat = "identity",position = position_dodge(width = 0.9)) + 
+  geom_linerange(data = validation_aucs_df,position = position_dodge(width = 0.9),
+                 aes(ymin = auc_value - 1/sqrt(N),
+                     ymax = ifelse(auc_value + 1/sqrt(N) > 1,1,auc_value + 1/sqrt(N))),
+                 alpha = 1,size = 0.5,shape = 5) + 
   geom_point(data = validation_aucs_df,position = position_dodge(width = 0.9),
              alpha = 1,size = 2,shape = 18,colour = "white") + 
   geom_point(data = validation_aucs_df,position = position_dodge(width = 0.9),

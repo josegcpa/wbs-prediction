@@ -7,6 +7,7 @@ library(cowplot)
 library(ggpubr)
 library(caret)
 library(pROC)
+library(ggrepel)
 
 select <- dplyr::select
 
@@ -71,22 +72,25 @@ label_conversion <- list(
     `Iron deficiency` = 0,`Megaloblastic` = 1)
 )
 
-all_metrics <- read_csv(
-  "../mile-vice/cv_metrics.csv",
-  col_names = c("set","fold","metric","value","nvc","nc","task_number","task","dataset","feature_set")) %>%
+all_metrics <- rbind(
+  read_csv(
+    "../mile-vice/metrics/cv_subset_metrics_df.csv",
+    col_names = c("set","fold","metric","value","nvc","nc",
+                  "task_number","task","dataset","feature_set"))) %>%
   mutate(task_original = task) %>%
+  subset(task != "cv_multi_class") %>% 
   mutate(multi_objective = ifelse(
     task == "cv_multi_objective","Multiple objective","Single objective")) %>% 
   mutate(multi_objective = factor(
     multi_objective,levels = c("Single objective","Multiple objective"))) %>%
   mutate(task = ifelse(task == "cv_multi_objective",task_conversion_mo[task_number+1],task)) %>%
   mutate(task = factor(task_conversion[task],levels = rev(task_conversion))) %>%
-  mutate(dataset_pretty = c(cells = "Morphology",cells_bc = "Morphology + B.C.")[dataset]) %>%
-  subset(feature_set == "subset_features")
+  mutate(dataset_pretty = c(cells = "Morphology",cells_bc = "Morphology + B.C.")[dataset])
 
-probs_class <- read_csv(
-  "../mile-vice/probs_class_train.csv",
-  col_names = c("X","fold","task_idx","prob","class","class_true","task","nvc","data_type","feature_set")) %>%
+probs_class <- rbind(
+  read_csv(
+    "../mile-vice/metrics/cv_subset_probs.csv",
+    col_names = c("X","fold","task_idx","prob","class","class_true","task","nvc","data_type","feature_set"))) %>%
   subset(feature_set == "subset_features")
 
 probs_class_idx <- probs_class %>%
@@ -105,6 +109,7 @@ for (i in 1:nrow(probs_class_idx)) {
   roc_coords <- get.coords.for.ggplot(full_roc) %>%
     as.tibble %>%
     mutate(data_type = tmp[3])
+  print(tmp)
   all_roc[[l_s]] <- roc_coords
   all_roc[[l_s]]$task_idx <- tmp[1]
   all_roc[[l_s]]$task <- tmp[2]
@@ -216,6 +221,8 @@ best_models_so <- all_roc_df %>%
   as_tibble() %>% 
   arrange(dataset,task)
 
+write.csv(best_models_so,"data_output/best_models_so.csv")
+
 best_models_mo <- all_roc_df %>%
   select(nvc,task,multi_objective = mo,value = auc_value,dataset = data_type) %>%
   subset(multi_objective == T) %>%
@@ -229,6 +236,8 @@ best_models_mo <- all_roc_df %>%
   select(-best_average) %>%
   filter(nvc == min(as.numeric(as.character(nvc)))) %>% 
   as_tibble()
+
+write.csv(best_models_mo,"data_output/best_models_mo.csv")
 
 best_models_roc_curves <- list()
 best_models_so_list <- list()
@@ -266,28 +275,6 @@ for (i in 1:nrow(distinct(select(best_models_mo,nvc,dataset)))) {
              mo == T &
              nvc == tmp$nvc)
 }
-
-do.call(what = rbind,best_models_so_list) %>%
-  arrange() %>% 
-  mutate(to = gsub("cv_","",task_original)) %>%
-  transmute(a = sprintf("models/cv_subset.%s.%s%s",
-                        to,nvc,
-                        ifelse(dataset == "cells","",".bc")),
-            b = fold,c = sprintf("labels/%s.csv",
-                                 to)) %>%
-  write.table(file = "../mile-vice/best_models",
-              row.names = F,col.names = F,quote = F,sep = ',')
-
-do.call(what = rbind,best_models_mo_list) %>%
-  distinct %>%
-  transmute(a = sprintf("models/cv_subset.%s.%s%s",
-                        "multi_objective",nvc,
-                        ifelse(dataset == "cells","",".bc")),
-            b = fold,
-            c = sprintf(
-              "labels/binary.csv",NA)) %>%
-  write.table(file = "../mile-vice/best_models_mo",
-              row.names = F,col.names = F,quote = F,sep = ',')
 
 # auroc analysis ----------------------------------------------------------
 
@@ -374,6 +361,9 @@ spread(glmnet_scores,key = "key",value = "value") %>%
   ggplot(aes(x = glmnet,y = `MILe-ViCe`,colour = dataset,shape = mo)) + 
   geom_abline(slope = 1,linetype = 3,alpha = 0.5,size = 0.5) +
   geom_point(size = 1) + 
+  geom_line(aes(group = paste(dataset,task)),size = 0.25) + 
+  geom_text_repel(aes(label = ifelse(mo == F,as.character(task),NA)),
+                  size = 2,min.segment.length = 0.1,colour = "black") +
   scale_x_continuous(labels = function(x) sprintf("%.1f%%",x*100)) + 
   scale_y_continuous(labels = function(x) sprintf("%.1f%%",x*100)) + 
   ylab("MILe-ViCe AUC") +

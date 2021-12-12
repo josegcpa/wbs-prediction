@@ -5,6 +5,10 @@ library(tidyverse)
 library(ggsci)
 
 ggsave <- function(...) {
+  args <- list(...)
+  if ("device" %in% names(args)) {
+    return(ggplot2::ggsave(...))
+  }
   return(ggplot2::ggsave(useDingbats = F,...))
 }
 
@@ -42,7 +46,7 @@ fine_colours <- c(
 names(fine_colours) <- fine_class_conversion
 fine_colours <- c(MDS = "green4",Anaemia = "red4",
                   `Non-SF3B1-mutant` = "darkorchid",
-                  fine_colours)
+                  fine_colours,Disease = "pink2")
   
 features_all <- c(
   "eccentricity","area","perimeter","circle_variance","ellipse_variance",
@@ -63,10 +67,6 @@ features_nuclear <- c(
   "eccentricity","area_separate","perimeter_separate",
   "circle_variance","ellipse_variance",
   "convexity_separate","solidity_separate",
-  "invariant_region_moments_0","invariant_region_moments_1",
-  "invariant_region_moments_2","invariant_region_moments_3",
-  "invariant_region_moments_4","invariant_region_moments_5",
-  "invariant_region_moments_6",
   "mass_displacement_red","mass_displacement_green",
   "mass_displacement_blue","mass_displacement_av"
 ) %>%
@@ -112,13 +112,6 @@ features_conversion <- c(
   ellipse_variance_nuclear = "Ellipse var. (nuc.)",
   convexity_separate_nuclear = "Convexity (nuc.)",
   solidity_separate_nuclear = "Solidity (nuc.)",
-  invariant_region_moments_0_nuclear = "Inv. region mom. 0 (nuc.)",
-  invariant_region_moments_1_nuclear = "Inv. region mom. 1 (nuc.)",
-  invariant_region_moments_2_nuclear = "Inv. region mom. 2 (nuc.)",
-  invariant_region_moments_3_nuclear = "Inv. region mom. 3 (nuc.)",
-  invariant_region_moments_4_nuclear = "Inv. region mom. 4 (nuc.)",
-  invariant_region_moments_5_nuclear = "Inv. region mom. 5 (nuc.)",
-  invariant_region_moments_6_nuclear = "Inv. region mom. 6 (nuc.)",
   mass_displacement_red_nuclear = "Mass displacement (R; nuc.)",
   mass_displacement_green_nuclear = "Mass displacement (G; nuc.)",
   mass_displacement_blue_nuclear = "Mass displacement (B; nuc.)",
@@ -126,6 +119,7 @@ features_conversion <- c(
   hb_g_dl = "Haemoglobin (g/dL)",plt_ul = "Platelets (/uL)",
   wbc_ul = "WBC (/uL)"
 )
+
 
 # functions ---------------------------------------------------------------
 

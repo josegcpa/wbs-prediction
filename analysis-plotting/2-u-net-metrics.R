@@ -22,106 +22,87 @@ dataset_conversion <- list(
 
 # plotting ----------------------------------------------------------------
 
-data <- read_csv("data/test_results_unet_full_.csv") %>%
-  subset(SAE == FALSE & TRANSFORMED == F) %>%
-  select(-SAE,-TRANSFORMED)
+df <- read_csv("data/test_results_unet_tf2.csv",
+                 col_names = c("dataset","epoch","depth","TTA","refine","blank","metric","blank2","value")) %>%
+  select(-blank,-blank2) %>%
+  mutate(dataset = c(adden_1 = "Adden1",adden_2 = "Adden2","mll" = "MLL")[dataset]) %>%
+  mutate(dataset = factor(dataset,levels = c("Adden1","MLL","Adden2"))) %>% 
+  mutate(depth = factor(depth,levels = c(0.25,0.5,1.0),labels = c("Depth mult. = 0.25","Depth mult. = 0.5","Depth mult. = 1.0"))) %>%
+  mutate(epoch = factor(epoch,levels = c("50","100"),labels = c("Early stopping\n(at 50 epochs)","Trained\nfor 100 epochs"))) %>%
+  mutate(TTA = ifelse(TTA == 1, "TTA","No TTA"))
 
-data_ac2 <- rbind(
-  read_csv("data/test_results_unet_adden_2.csv",
-           col_names = c("Set","Metric","Metric_desc","value")) %>%
-    mutate(model = "Trained on AC1"),
-  read_csv("data/test_results_unet_adden_2_ft.csv",
-           col_names = c("Set","Metric","Metric_desc","value")) %>%
-    mutate(model = "Trained on AC1,\nfinetuned on AC2")
-)
+MAX <- max(df$value[df$metric == "IOU"])
+MIN <- 0.5
+B <- c(0,0.2,0.5,0.6,0.8,0.9)
 
-data %>%
-  mutate(TRAIN_DATASET = dataset_conversion$train[TRAIN_DATASET],
-         TEST_DATASET = dataset_conversion$test[TEST_DATASET]) %>%
-  mutate(FINETUNE = ifelse(FINETUNE,"Trained on AC1,\nfinetuned on MLLC","Trained on AC1")) %>% 
-  mutate(TUMBLE = ifelse(TUMBLE,"Yes","No")) %>% 
-  mutate(TUMBLE = factor(TUMBLE,levels = c("Yes","No"))) %>% 
-  subset(TRAIN_DATASET == "AC1") %>% 
-  mutate(DEPTH = sprintf("Depth mult. = %.2f",DEPTH)) %>% 
-  mutate(DEPTH = factor(DEPTH,levels = sprintf("Depth mult. = %.2f",c(0.1,0.25,0.5,1.0)))) %>%
-  ggplot(aes(x = TEST_DATASET,y = MeanIOU,fill = TUMBLE)) + 
-  geom_bar(stat = "identity",position = "dodge",colour = "black",size = 0.25) + 
-  facet_wrap(~ FINETUNE + DEPTH,ncol = 4) + 
-  scale_y_continuous(expand = c(0,0),breaks = seq(0,1,by = 0.1)) + 
-  coord_cartesian(ylim = c(0.6,1.0)) +
-  theme_pretty(base_size = 6) + 
-  xlab("Testing set") +
-  ylab("Jaccard index") + 
-  scale_fill_aaas(name = "Test-time data\naugmentation") + 
-  theme(legend.position = "bottom",
-        legend.key.size = unit(0.1,"cm"),
-        strip.text = element_text(margin = margin())) +
-  ggsave("figures/u-net-metrics-full.pdf",height = 4.2,width = 3.8) 
+# basic 
+df %>%
+  subset(TTA == "No TTA" & refine == F & metric == "IOU" & 
+           epoch == "Trained\nfor 100 epochs") %>% 
+  ggplot(aes(x = dataset,y = value)) +
+  geom_bar(stat = "identity",position = "dodge") + 
+  facet_wrap(~ depth) + 
+  theme_pretty(base_size = 6) +
+  theme(legend.key.width = unit(0.1,"cm"),
+        legend.position = "bottom",
+        legend.key.height = unit(0.2,"cm"),legend.margin = margin()) +
+  scale_y_continuous(expand = c(0,0,0.04,0),breaks = B) +
+  coord_cartesian(ylim = c(MIN,MAX)) +
+  xlab("Cohort") + 
+  ylab("Mean IoU") + 
+  ggsave("figures/u-net-metrics-basic.pdf",height=1.3,width=3)
 
-data %>%
-  mutate(TRAIN_DATASET = dataset_conversion$train[TRAIN_DATASET],
-         TEST_DATASET = dataset_conversion$test[TEST_DATASET]) %>%
-  mutate(FINETUNE = ifelse(FINETUNE,"Trained on AC1,\nfinetuned on MLLC","Trained on AC1")) %>% 
-  mutate(TUMBLE = ifelse(TUMBLE,"Yes","No")) %>% 
-  mutate(TUMBLE = factor(TUMBLE,levels = c("Yes","No"))) %>% 
-  subset(TRAIN_DATASET == "AC1") %>% 
-  mutate(DEPTH = sprintf("Depth mult. = %.2f",DEPTH)) %>% 
-  mutate(DEPTH = factor(DEPTH,levels = sprintf("Depth mult. = %.2f",c(0.1,0.25,0.5,1.0)))) %>%
-  ggplot(aes(x = `AUC`,y = MeanIOU,colour = TUMBLE,group = paste(TUMBLE,DEPTH),shape = TEST_DATASET)) + 
-  geom_line(size = 0.25,aes(linetype = DEPTH)) +
-  geom_point(stat = "identity",position = "dodge",size = 1.0) + 
-  facet_wrap(~ FINETUNE,scales = "free") + 
-  scale_y_continuous(trans = 'log10') + 
-  scale_x_continuous(trans = 'log10') + 
-  #coord_cartesian(ylim = c(0.8,1.0)) +
-  theme_pretty(base_size = 6) + 
-  xlab("AUC") +
-  ylab("Jaccard index") + 
-  scale_colour_aaas(name = "Test-time data\naugmentation") + 
-  scale_shape(name = "Testing\ndataset") + 
-  scale_linetype_manual(name = NULL,values = c(3,4,2,1)) +
-  theme(legend.position = "bottom",
-        legend.key.height = unit(0.2,"cm"),
-        strip.text = element_text(margin = margin())) +
-  guides(linetype = guide_legend(nrow = 4,keywidth = 1),
-         shape = guide_legend(nrow = 2,keywidth = 0.5),
-         colour = guide_legend(nrow = 2,keywidth = 0.5)) +
-  ggsave("figures/u-net-metrics-scatter-full.pdf",height = 2,width = 3.2) 
+# early vs late
 
-data %>%
-  mutate(TRAIN_DATASET = dataset_conversion$train[TRAIN_DATASET],
-         TEST_DATASET = dataset_conversion$test[TEST_DATASET]) %>%
-  mutate(FINETUNE = ifelse(FINETUNE,"Trained on AC1,\nfinetuned on MLLC","Trained on AC1")) %>% 
-  mutate(TUMBLE = ifelse(TUMBLE,"Yes","No")) %>% 
-  mutate(TUMBLE = factor(TUMBLE,levels = c("Yes","No"))) %>% 
-  subset(DEPTH == 0.25 & TRAIN_DATASET == "AC1") %>% 
-  ggplot(aes(x = TEST_DATASET,y = MeanIOU,fill = TUMBLE)) + 
-  geom_bar(stat = "identity",position = "dodge",colour = "black",size = 0.25) + 
-  facet_wrap(~ FINETUNE) + 
-  scale_y_continuous(expand = c(0,0),breaks = seq(0,1,by = 0.1)) + 
-  coord_cartesian(ylim = c(0.7,1.0)) +
-  theme_pretty(base_size = 6) + 
-  xlab("Testing set") +
-  ylab("Jaccard index") + 
-  scale_fill_aaas(name = "Test-time data\naugmentation") + 
-  theme(legend.position = "bottom",
-        legend.key.size = unit(0.1,"cm"),
-        strip.text = element_text(margin = margin(t = 2))) +
-  ggsave("figures/u-net-metrics.pdf",height = 2.1,width = 1.6) 
+df %>%
+  subset(TTA == "No TTA" & refine == F & metric == "IOU") %>% 
+  ggplot(aes(x = dataset,y = value,fill = epoch)) +
+  geom_bar(stat = "identity",position = "dodge") + 
+  facet_wrap(~ depth) + 
+  theme_pretty(base_size = 6) +
+  theme(legend.key.width = unit(0.1,"cm"),
+        legend.position = "bottom",
+        legend.key.height = unit(0.2,"cm"),legend.margin = margin()) +
+  scale_y_continuous(expand = c(0,0,0.04,0),breaks = B) +
+  scale_fill_aaas(name = NULL) + 
+  coord_cartesian(ylim = c(MIN,MAX)) +
+  xlab("Cohort") + 
+  ylab("Mean IoU") + 
+  ggsave("figures/u-net-metrics-early-late.pdf",height=1.5,width=3)
 
-data_ac2 %>% 
-  subset(Metric == "IOU" & Metric_desc == "global") %>%
-  ggplot(aes(x = model,y = value)) + 
-  geom_bar(stat = "identity",position = "dodge",fill = "black",colour = NA,size = 0.25) + 
-  scale_y_continuous(expand = c(0,0),labels = function(x) sprintf("%.1f%%",x*100),
-                     breaks = c(0.845,0.85)) + 
-  theme_pretty(base_size = 6) + 
-  ylab("Jaccard index") + 
-  scale_fill_aaas(name = "Test-time data\naugmentation") + 
-  theme(legend.position = "bottom",
-        legend.key.size = unit(0.1,"cm"),
-        axis.title.y = element_blank(),
-        strip.text = element_text(margin = margin(t = 2))) +
-  coord_flip(ylim = c(0.845,0.85)) +
-  ggsave("figures/u-net-metrics-ac2.pdf",height = 0.7,width = 1.25) 
+# TTA vs. no TTA
 
+df %>%
+  subset(refine == F & metric == "IOU" & epoch == "Trained\nfor 100 epochs") %>% 
+  ggplot(aes(x = dataset,y = value,fill = TTA)) +
+  geom_bar(stat = "identity",position = "dodge") + 
+  facet_wrap(~ depth) + 
+  theme_pretty(base_size = 6) +
+  theme(legend.key.width = unit(0.1,"cm"),
+        legend.position = "bottom",
+        legend.key.height = unit(0.2,"cm"),legend.margin = margin()) +
+  scale_y_continuous(expand = c(0,0,0.04,0),breaks = B) +
+  scale_fill_jama(name = NULL) + 
+  coord_cartesian(ylim = c(MIN,MAX)) +
+  xlab("Cohort") + 
+  ylab("Mean IoU") + 
+  ggsave("figures/u-net-metrics-tta.pdf",height=1.5,width=3)
+
+# Refine vs. no refine
+
+df %>%
+  subset(TTA == "TTA" & metric == "IOU" & epoch == "Trained\nfor 100 epochs") %>% 
+  mutate(refine = factor(refine,c(0,1),labels = c("No prediction\npost-processing","Prediction\npost-processing"))) %>% 
+  ggplot(aes(x = dataset,y = value,fill = refine)) +
+  geom_bar(stat = "identity",position = "dodge") + 
+  facet_wrap(~ depth) + 
+  theme_pretty(base_size = 6) +
+  theme(legend.key.width = unit(0.1,"cm"),
+        legend.position = "bottom",
+        legend.key.height = unit(0.2,"cm"),legend.margin = margin()) +
+  scale_y_continuous(expand = c(0,0,0.04,0),breaks = B) +
+  scale_fill_simpsons(name = NULL) + 
+  coord_cartesian(ylim = c(MIN,MAX)) +
+  xlab("Cohort") + 
+  ylab("Mean IoU") + 
+  ggsave("figures/u-net-metrics-refine.pdf",height=1.5,width=3)

@@ -1,5 +1,3 @@
-# setup -------------------------------------------------------------------
-
 source("function-library.R")
 
 all_conditions <- rbind(
@@ -50,23 +48,61 @@ WBC_data <- rbind(
   gather(key = "key",value = "value",-slide_id,-moment,-dataset) %>%
   merge(all_conditions,by = "slide_id")
 
-WBC_data %>%
+RBC_data %>%
   subset(dataset %in% c("AC2","MLL") & fine_class == "Normal") %>% 
-  subset(moment == "variance") %>%
+  subset(moment %in% c("mean","variance")) %>%
   mutate(key = factor(key,levels = rev(c(features_all,features_nuclear)))) %>%
   group_by(key,moment) %>% 
   mutate(value = scale(value)) %>% 
   group_by(key,moment,dataset) %>%
   summarise(m = median(value),q05 = quantile(value,0.05),q95 = quantile(value,0.95)) %>%
-  ggplot(aes(x = key,y = m,ymin = q05,ymax = q95,colour  = dataset)) + 
+  group_by(key,moment) %>%
+  mutate(d = abs(diff(m))) %>% 
+  ggplot(aes(x = reorder(key,d),y = m,ymin = q05,ymax = q95,colour  = dataset)) + 
   geom_point(position = position_dodge(width = 0.9),shape = 3) +
   geom_linerange(position = position_dodge(width = 0.9)) +
   theme_pretty(base_size = 6) + 
   coord_flip() +
-  ggsave("figures/feture_density.pdf",height = 10,width = 10)
+  facet_wrap(~ moment) +
+  xlab("Fetures") + 
+  ylab("Standardized mean") + 
+  ggsave("figures/feture_density.pdf",height = 5,width = 5)
+
+wide_WBC_data <- WBC_data %>%
+  subset(moment == "mean" & dataset %in% c("MLL","AC2")) %>%
+  spread(key = "key",value = "value")
+WBC_PCA <- cbind(wide_WBC_data[,c(1:5)],prcomp(wide_WBC_data[,-c(1:5)])$x) 
+ggplot(WBC_PCA,aes(x=PC2,y=PC3,colour=dataset)) + 
+  geom_point(alpha=0.5) + facet_wrap(~fine_class) + 
+  theme_pretty(base_size = 6)
 
 auc_list <- list()
 ratio_list <- list()
+for (k in unique(WBC_data$key)) {
+  X <- WBC_data %>%
+    subset(key == k) %>% 
+    subset(dataset != "AC2")
+  
+  n1 <- sum(subset(X,moment == "mean")$dataset == "MLL")
+  n2 <- sum(subset(X,moment == "mean")$dataset == "AC1")
+  a <- wilcox.test(value ~ dataset,data = subset(X,moment == "mean"),
+                   paired=F)
+  b <- wilcox.test(sqrt(value) ~ dataset,data = subset(X,moment == "variance"),
+                   paired=F)
+  
+  a_auc <- a$statistic/(n1*n2)
+  b_auc <- b$statistic/(n1*n2)
+  
+  auc_list[[length(auc_list)+1]] <- data.frame(
+    feature = k,
+    mean_auc = a_auc,
+    var_auc = b_auc,
+    dataset_pair = "MLL vs. AC1")
+  ratio_list[[length(ratio_list)+1]] <-   X %>%
+    subset(moment == "mean" | moment == "variance") %>% 
+    group_by(dataset,key,moment) %>% 
+    summarise(mean = mean(value),.groups = "drop")
+}
 for (k in unique(WBC_data$key)) {
   X <- WBC_data %>%
     subset(key == k) %>% 
@@ -76,16 +112,17 @@ for (k in unique(WBC_data$key)) {
   n2 <- sum(subset(X,moment == "mean")$dataset == "AC2")
   a <- wilcox.test(value ~ dataset,data = subset(X,moment == "mean"),
                    paired=F)
-  b <- wilcox.test(value ~ dataset,data = subset(X,moment == "variance"),
+  b <- wilcox.test(sqrt(value) ~ dataset,data = subset(X,moment == "variance"),
                    paired=F)
   
   a_auc <- a$statistic/(n1*n2)
   b_auc <- b$statistic/(n1*n2)
   
-  auc_list[[k]] <- data.frame(
+  auc_list[[length(auc_list)+1]] <- data.frame(
     feature = k,
     mean_auc = a_auc,
-    var_auc = b_auc)
+    var_auc = b_auc,
+    dataset_pair = "MLL vs. AC2")
   ratio_list[[k]] <-   X %>%
     subset(moment == "mean" | moment == "variance") %>% 
     group_by(dataset,key,moment) %>% 
@@ -93,19 +130,23 @@ for (k in unique(WBC_data$key)) {
 }
 
 do.call(rbind,auc_list) %>%
+  mutate(I = grepl("mass_disp|invariant",feature)) %>% 
+  subset(dataset_pair == "MLL vs. AC2") %>%
   ggplot(aes(x = mean_auc,y = var_auc)) + 
   geom_point() + 
-  geom_hline(yintercept = 0.2,size = 0.5,linetype = 2) +
-  geom_vline(xintercept = 0.2,size = 0.5,linetype = 2) + 
+  geom_hline(yintercept = 0.5,size = 0.25,linetype = 2) +
+  geom_vline(xintercept = 0.5,size = 0.25,linetype = 2) + 
   geom_abline(slope = 1,linetype = 3,alpha = 0.5, size = 0.5) +
   theme_pretty(base_size = 6) + 
   scale_x_continuous(expand = c(0.01,0)) + 
   scale_y_continuous(expand = c(0.01,0)) + 
+  coord_cartesian(xlim = c(0,1),ylim = c(0,1)) +
   ylab("AUC for variances") +
   xlab("AUC for means")
 
 do.call(rbind,ratio_list) %>%
   spread(key = "dataset",value = "mean") %>%
+  subset(dataset_pair == "MLL vs. AC2") %>%
   ggplot(aes(x = MLL,y = AC2)) + 
   geom_point() + 
   geom_abline(slope = 1,linetype = 3,alpha = 0.5, size = 0.5) +
@@ -119,8 +160,8 @@ do.call(rbind,ratio_list) %>%
 do.call(rbind,ratio_list) %>%
   spread(key = "dataset",value = "mean") %>%
   mutate(ratio = MLL/AC2) %>% 
+  mutate(ratio = ifelse(ratio > 10,10,ratio)) %>%
   mutate(key = factor(key,levels = c(features_all,features_nuclear))) %>% 
-  mutate(ratio = ifelse(ratio > 10,10,ratio)) %>% 
   mutate(moment = c(mean = "Means",variance = "Variances")[moment]) %>% 
   ggplot(aes(x = key,y = ratio)) + 
   geom_hline(yintercept = 1,size = 0.5,linetype = 3, alpha = 0.5) +

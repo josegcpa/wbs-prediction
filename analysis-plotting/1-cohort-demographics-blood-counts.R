@@ -43,7 +43,7 @@ age_plot <- all_conditions %>%
         legend.position = "none",
         legend.key.height = unit(0.2,"cm"),
         legend.key.width = unit(0.2,"cm")) + 
-  ggsave("figures/cohort-age-condition.pdf",height = H,width = W,useDingbats = F)
+  ggsave("figures/cohort-age-condition.pdf",height = H,width = W)
 
 wbc_plot <- all_conditions %>%
   ggplot(aes(x = Condition,y = as.numeric(wbc_ul),fill = fine_class)) + 
@@ -58,7 +58,7 @@ wbc_plot <- all_conditions %>%
         legend.position = "none",
         legend.key.height = unit(0.2,"cm"),
         legend.key.width = unit(0.2,"cm")) + 
-  ggsave("figures/cohort-wbc-condition.pdf",height = H,width = W,useDingbats = F)
+  ggsave("figures/cohort-wbc-condition.pdf",height = H,width = W)
 
 hb_plot <- all_conditions %>%
   ggplot(aes(x = Condition,y = as.numeric(hb_g_dl),fill = fine_class)) + 
@@ -72,7 +72,7 @@ hb_plot <- all_conditions %>%
         legend.position = "none",
         legend.key.height = unit(0.2,"cm"),
         legend.key.width = unit(0.2,"cm")) + 
-  ggsave("figures/cohort-hg-condition.pdf",height = H,width = W,useDingbats = F)
+  ggsave("figures/cohort-hg-condition.pdf",height = H,width = W)
 
 plt_plot <- all_conditions %>%
   ggplot(aes(x = Condition,y = as.numeric(plt_ul),fill = fine_class)) + 
@@ -87,13 +87,13 @@ plt_plot <- all_conditions %>%
         legend.position = "none",
         legend.key.height = unit(0.2,"cm"),
         legend.key.width = unit(0.2,"cm")) + 
-  ggsave("figures/cohort-plt-condition.pdf",height = H,width = W,useDingbats = F)
+  ggsave("figures/cohort-plt-condition.pdf",height = H,width = W)
 
 plot_grid(
   age_plot,wbc_plot,hb_plot,plt_plot,
   align = "hv"
 ) + 
-  ggsave(filename = "figures/cohort-age-wbc-hb-plt-condition.pdf",height = H*2,width = W*2,useDingbats = F)
+  ggsave(filename = "figures/cohort-age-wbc-hb-plt-condition.pdf",height = H*2,width = W*2)
 
 (all_conditions %>%
     ggplot(aes(x = Condition,y = age,fill = fine_class)) + 
@@ -107,7 +107,7 @@ plot_grid(
           legend.key.height = unit(0.2,"cm"),
           legend.key.width = unit(0.2,"cm"))) %>%
   get_legend() %>%
-  ggsave(filename = "figures/fine-legend.pdf",height = 0.7,width = 1.1,useDingbats = F)
+  ggsave(filename = "figures/fine-legend.pdf",height = 0.7,width = 1.1)
 
 all_conditions %>%
   ggplot(aes(x = Condition,fill = sex)) + 
@@ -121,7 +121,7 @@ all_conditions %>%
         legend.key.height = unit(0.2,"cm"),
         legend.key.width = unit(0.2,"cm")) + 
   scale_y_continuous(expand = c(0,0)) +
-  ggsave("figures/cohort-sex-condition.pdf",height = H*1.2,width = W*0.9,useDingbats = F)
+  ggsave("figures/cohort-sex-condition.pdf",height = H*1.2,width = W*0.9)
 
 glm(Condition == "MDS" ~ age + sex, data = all_conditions,
     family = stats::binomial) %>% 
