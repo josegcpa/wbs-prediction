@@ -38,6 +38,7 @@ class BCProcess:
         self.Centers = {}
 
     def generate(self,q):
+        self.init_hdf5()
         C = True
         while C == True:
             element = q.get()
@@ -143,7 +144,7 @@ class ProcessingQueue:
         self.p.start()
     
     def join(self):
-        self.q.join()
+        self.p.join()
 
 # WBC segmentation post-processing
 
@@ -212,24 +213,27 @@ def filter_refine_cell(image_labels_im_i):
     if np.any(conditions):
         pass
     else:
-        x_ = x - cc[0]
-        y_ = y - cc[1]
-        S = len(x)
-        if (S > 1000/RS) and (S < 8000/RS):
-            sub_image = image[cc[0]:cc[2],cc[1]:cc[3],:]
-            mask_binary_holes = np.zeros([s,s])
-            mask_binary_holes[(x_,y_)] = 1
-            mask_convolved = convolve_n(
-                mask_binary_holes.astype(np.float32),
-                Filter,3,thr=0.5)
-            mask_hulls,cnt = draw_hulls(mask_convolved)
-            mask_hulls = binary_fill_holes(mask_hulls)
-            features = {}
-            features['image'] = sub_image
-            features['mask'] = mask_hulls
-            features['cnt'] = cnt
-            features['x'] = x
-            features['y'] = y
+        try:
+            x_ = x - cc[0]
+            y_ = y - cc[1]
+            S = len(x)
+            if (S > 1000/RS) and (S < 8000/RS):
+                sub_image = image[cc[0]:cc[2],cc[1]:cc[3],:]
+                mask_binary_holes = np.zeros([s,s])
+                mask_binary_holes[(x_,y_)] = 1
+                mask_convolved = convolve_n(
+                    mask_binary_holes.astype(np.float32),
+                    Filter,3,thr=0.5)
+                mask_hulls,cnt = draw_hulls(mask_convolved)
+                mask_hulls = binary_fill_holes(mask_hulls)
+                features = {}
+                features['image'] = sub_image
+                features['mask'] = mask_hulls
+                features['cnt'] = cnt
+                features['x'] = x
+                features['y'] = y
+        except:
+            features = None
     return features
 
 def refine_prediction_wbc(image,mask,rescale_factor):
@@ -368,10 +372,16 @@ fan_u_net.unet_model.make_predict_function()
 fan_u_net.fan_model.make_predict_function()
 
 wbc_process = WBCProcess(args.wbc_output_path,h,w,extra)
-wbc_process.init_hdf5()
+#wbc_process_queue = ProcessingQueue(wbc_process.generate)
+#wbc_process_queue.start()
+
 rbc_process = RBCProcess(args.rbc_output_path,h,w,extra)
+#rbc_process_queue = ProcessingQueue(rbc_process.generate)
+#rbc_process_queue.start()
+
+wbc_process.init_hdf5()
 rbc_process.init_hdf5()
- 
+
 def generator():
     G = igwq.generate()
     for image,coords in G:
@@ -390,14 +400,18 @@ for image,coords in tqdm(tf_dataset):
     coords = list(coords.numpy())
     normalised_input = fan_u_net.fan_model(image)
     for n_i,c in zip(normalised_input,coords):
-        masked_wbc = mask_wbc(n_i,fan_u_net.unet_model,tta=True)
         n_i = (n_i-fan_adjustment[0])/ (fan_adjustment[1]-fan_adjustment[0])
         n_i_p = n_i.numpy()
         n_i_p = np.clip(n_i_p,0,1)
         n_i_p = np.uint8(n_i_p*255)
+        #rbc_process_queue.add_to_queue([n_i_p,args.rescale_factor,c])
 
+        masked_wbc = mask_wbc(n_i,fan_u_net.unet_model,tta=True)
+        #wbc_process_queue.add_to_queue([n_i_p,masked_wbc,args.rescale_factor,c])
         wbc_process.process_element([n_i_p,masked_wbc,args.rescale_factor,c])
         rbc_process.process_element([n_i_p,args.rescale_factor,c])
 
+#wbc_process_queue.join()
+#rbc_process_queue.join()
 wbc_process.close_hdf5()
 rbc_process.close_hdf5()

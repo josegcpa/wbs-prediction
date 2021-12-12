@@ -212,24 +212,27 @@ def filter_refine_cell(image_labels_im_i):
     if np.any(conditions):
         pass
     else:
-        x_ = x - cc[0]
-        y_ = y - cc[1]
-        S = len(x)
-        if (S > 1000/RS) and (S < 8000/RS):
-            sub_image = image[cc[0]:cc[2],cc[1]:cc[3],:]
-            mask_binary_holes = np.zeros([s,s])
-            mask_binary_holes[(x_,y_)] = 1
-            mask_convolved = convolve_n(
-                mask_binary_holes.astype(np.float32),
-                Filter,3,thr=0.5)
-            mask_hulls,cnt = draw_hulls(mask_convolved)
-            mask_hulls = binary_fill_holes(mask_hulls)
-            features = {}
-            features['image'] = sub_image
-            features['mask'] = mask_hulls
-            features['cnt'] = cnt
-            features['x'] = x
-            features['y'] = y
+        try:
+            x_ = x - cc[0]
+            y_ = y - cc[1]
+            S = len(x)
+            if (S > 1000/RS) and (S < 8000/RS):
+                sub_image = image[cc[0]:cc[2],cc[1]:cc[3],:]
+                mask_binary_holes = np.zeros([s,s])
+                mask_binary_holes[(x_,y_)] = 1
+                mask_convolved = convolve_n(
+                    mask_binary_holes.astype(np.float32),
+                    Filter,3,thr=0.5)
+                mask_hulls,cnt = draw_hulls(mask_convolved)
+                mask_hulls = binary_fill_holes(mask_hulls)
+                features = {}
+                features['image'] = sub_image
+                features['mask'] = mask_hulls
+                features['cnt'] = cnt
+                features['x'] = x
+                features['y'] = y
+        except:
+            features = None
     return features
 
 def refine_prediction_wbc(image,mask,rescale_factor):

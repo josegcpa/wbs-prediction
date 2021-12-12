@@ -29,12 +29,7 @@ if __name__ == "__main__":
                         help = 'Size of mini batch.')
     args = parser.parse_args()
 
-    mobilenet_v2 = keras.applications.MobileNetV2(
-        input_shape=[args.input_height,args.input_width,3],
-        include_top=False,classes=2,pooling='max',weights=None)
-    quality_net = quality_net_model(
-        mobilenet_v2,args.input_height,args.input_width)
-    quality_net.load_weights(args.checkpoint_path)
+    quality_net = keras.models.load_model(args.checkpoint_path)
 
     def generator():
         G = image_generator_slide(

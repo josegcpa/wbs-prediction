@@ -18,7 +18,7 @@ def image_generator(quality_csv_path,slide_path,
             else:
                 negatives.append([int(data[1]),int(data[2])])
     
-    for x,y in positives[:200]:
+    for x,y in positives:
         try:
             x = x - extra_padding
             y = y - extra_padding

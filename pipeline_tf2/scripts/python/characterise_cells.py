@@ -10,6 +10,7 @@ import cv2
 from multiprocessing import Pool
 from skimage.transform import rescale
 from sklearn.preprocessing import StandardScaler
+from tqdm import tqdm
 
 import MIA
 
@@ -134,9 +135,11 @@ all_features = []
 all_ks = []
 image_sets = []
 k_sets = []
+cell_centers = []
 cell_idx = 0
 with h5py.File(args.segmented_cells_path,'r') as F:
-    for k in F:
+    all_keys = list(F.keys())
+    for k in tqdm(all_keys):
         image = F[k]['image'][()]
         mask = F[k]['mask'][()]
         cnt = F[k]['cnt'][()]
@@ -147,6 +150,9 @@ with h5py.File(args.segmented_cells_path,'r') as F:
                 feature_extractor.extract_features,image_sets)
             for element,k in zip(output,k_sets):
                 if element is not None:
+                    cell_center = k[1:-1].split(',')
+                    cx = float(cell_center[0])
+                    cy = float(cell_center[0])
                     features = []
                     for f in MIA_FEATURES:
                         features.append(element[f])
@@ -156,6 +162,7 @@ with h5py.File(args.segmented_cells_path,'r') as F:
                     else:
                         all_ks.append(cell_idx)
                         all_features.append(features)
+                        cell_centers.append(k)
                 cell_idx += 1
             image_sets = []
             k_sets = []
@@ -174,6 +181,7 @@ if len(image_sets) > 0:
             else:
                 all_ks.append(cell_idx)
                 all_features.append(features)
+                cell_centers.append(k)
         cell_idx += 1
 
 all_features = np.array(all_features)
@@ -199,9 +207,10 @@ if args.cell_type == 'rbc':
         all_ks = all_ks[predictions]
 
 print(all_features.shape)
-print(all_ks)
+
 with h5py.File(args.output_path,'w') as F_out:
-    F_out['cells'] = all_features
+    F_out['cells/0'] = all_features
     F_out['means'] = np.mean(all_features,axis=0)
     F_out['variances'] = np.var(all_features,axis=0)
+    F_out['cell_centers'] = np.array(cell_centers,dtype="S")
     F_out['cell_center_idxs'] = all_ks
