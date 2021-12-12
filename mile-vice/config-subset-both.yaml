@@ -1,0 +1,4 @@
+wbc_dataset: "datasets/wbc_mll_adden_1_subset.h5"
+rbc_dataset: "datasets/rbc_mll_adden_1_subset.h5"
+cv_string: "cv_subset_mll_adden_1"
+type: "subset_both"

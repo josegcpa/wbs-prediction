@@ -2,8 +2,6 @@ print('-'*20)
 import argparse
 import sys
 import torch
-import psutil
-import pickle
 import time
 from sklearn.model_selection import StratifiedKFold
 
@@ -71,6 +69,12 @@ if __name__ == "__main__":
                         action='store',nargs='+',
                         type=str,
                         default=[])
+    parser.add_argument('--median_impute',dest='median_impute',
+                        action='store_true',
+                        default=False)
+    parser.add_argument('--range',dest='range',
+                        action='store_true',
+                        default=False)
     parser.add_argument('--min_cells',dest='min_cells',
                         action='store',type=int,
                         default=None)
@@ -81,11 +85,15 @@ if __name__ == "__main__":
           dev = "cuda:0"
     else:
           dev = "cpu"
-    print(dev)
+
+    if args.median_impute == True:
+        handle_nans = 'median_impute'
+    else:
+        handle_nans = 'remove'
 
     all_datasets = [GenerateFromDataset(x) for x in args.dataset_path]
     if args.other_dataset_path is not None:
-        all_other_datasets = [CSVDataset(x,handle_nans='remove')
+        all_other_datasets = [CSVDataset(x,handle_nans=handle_nans)
                               for x in args.other_dataset_path]
         all_other_datasets_keys = [set(x.keys) for x in all_other_datasets]
     else:
@@ -127,7 +135,7 @@ if __name__ == "__main__":
     state_dict = {}
     state_dict['args'] = args
 
-    # used to calculated CV AUC
+    # used to calculate CV AUC
     all_probs = [[] for l in args.labels_path]
     all_classes = [[] for l in args.labels_path]
     for fold in range(args.n_folds):
@@ -155,11 +163,19 @@ if __name__ == "__main__":
         all_lists['queued_datasets'] = []
         for labels in all_lists['labels']:
             ts = [x for x in training_set if x in labels.keys]
-            Q = BatchGenerator(
-                all_datasets,labels,ts,
-                all_other_datasets,
-                n_cells=args.number_of_cells,
-                batch_size=args.batch_size)
+            if args.range == False:
+                Q = BatchGenerator(
+                    all_datasets,labels,ts,
+                    all_other_datasets,
+                    n_cells=args.number_of_cells,
+                    batch_size=args.batch_size)
+            else:
+                Q = BatchGenerator(
+                    all_datasets,labels,ts,
+                    all_other_datasets,
+                    n_cells=args.number_of_cells,
+                    batch_size=args.batch_size,
+                    normalize=True,normalize_range=True)
             all_lists['queued_datasets'].append(Q)
 
         all_n_classes = [l.n_classes for l in all_lists['labels']]
@@ -184,7 +200,8 @@ if __name__ == "__main__":
             weights[(np.arange(len(ts)).astype(np.int32),
                     labels[ts].astype(np.int32))] = 1
             C = torch.Tensor(1.-np.sum(weights,axis=0)/np.sum(weights))
-            criterion = torch.nn.CrossEntropyLoss(weight=C).to(dev)
+            criterion = torch.nn.CrossEntropyLoss(
+                reduction='none',weight=C).to(dev)
             all_lists['criterions'].append(criterion)
         optimizer = torch.optim.AdamW(
             param_generator(),
@@ -193,9 +210,10 @@ if __name__ == "__main__":
 
         schedule = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,patience=100,
-            factor=0.85,min_lr=args.learning_rate/1000)
+            factor=0.5,min_lr=args.learning_rate/10000)
 
         S = 0
+        min_lr_counter = 0
         print("Training now...")
         times = []
         while True:
@@ -209,6 +227,7 @@ if __name__ == "__main__":
                 B = queued_dataset.fetch_batch()
                 sampled_datasets = [x[:,np.newaxis,:,:]
                                     for x in B['datasets']]
+                print([x.shape for x in sampled_datasets])
                 truth = torch.LongTensor(B['labels']).to(dev)
                 slide_ids = B['slide_ids']
                 d = [torch.Tensor(x).to(dev) for x in sampled_datasets]
@@ -217,7 +236,13 @@ if __name__ == "__main__":
                 else:
                     od = None
                 output_prob = stacked_network([d,od],i)
-                loss[i] = criterion(output_prob,truth)
+                L = criterion(output_prob,truth)
+                # loss weight based on amount of evidence (number of cells)
+                n_cells = np.array(B['n_cells'])
+                W = np.minimum(args.number_of_cells,n_cells)
+                W = np.sum(W/(1+args.number_of_cells*2),axis=0)
+                W = torch.Tensor(1 + W)
+                loss[i] = torch.mean(L*W)
             if len(all_lists['criterions']) > 1:
                 loss = torch.Tensor(np.random.dirichlet(
                     [10. for _ in range(len(all_lists['criterions']))])) * loss
@@ -228,6 +253,8 @@ if __name__ == "__main__":
             lll = loss.to('cpu').detach().numpy()
             loss_history.append(lll)
             schedule.step(lll)
+            if schedule._last_lr[0] == args.learning_rate/10000:
+                min_lr_counter += 1
             if S % 100 == 0:
                 stacked_network.train(False)
                 loss_acc = [torch.zeros([1])
@@ -249,6 +276,7 @@ if __name__ == "__main__":
                             od = None
                         output_prob = stacked_network([d,od],i)
                         l = criterion(output_prob,truth).to('cpu').detach().numpy()
+                        l = np.mean(l)
                         loss_acc[i] += l / 10
 
                 L = [x for x in loss_acc]
@@ -256,12 +284,13 @@ if __name__ == "__main__":
                     schedule._last_lr[0],float(np.mean(times))))
                 stacked_network.train(True)
                 times = []
-                if schedule._last_lr[0] == args.learning_rate / 1000:
+                if min_lr_counter > 250:
                     break
             S += 1
 
         stacked_network.train(False)
 
+        # calculating training set metrics
         for ob in range(len(all_lists['criterions'])):
             queued_dataset = all_lists['queued_datasets'][ob]
             labels = all_lists['labels'][ob]
@@ -302,10 +331,14 @@ if __name__ == "__main__":
                         args.number_of_cells,ob))
             metrics_workhorse.reset()
 
+        # calculating testing set metrics
         for ob in range(len(all_lists['criterions'])):
             queued_dataset = all_lists['queued_datasets'][ob]
             labels = all_lists['labels'][ob]
             ts = [x for x in testing_set if x in labels.keys]
+            if args.range == True:
+                for dataset in queued_dataset.datasets:
+                    dataset.get_min_max()
             B = queued_dataset.fetch_batch(ts)
             sampled_datasets = [x[:,np.newaxis,:,:]
                                 for x in B['datasets']]
@@ -331,8 +364,20 @@ if __name__ == "__main__":
                 output_onehot = output_onehot[:,1:]
                 output_prob = output_prob[:,1:]
 
-                all_probs[ob].append([float(x) for x in output_prob.cpu().detach().numpy()])
-                all_classes[ob].append([float(x) for x in truth_onehot.cpu().detach().numpy()])
+                all_probs[ob].append(
+                    [float(x) for x in output_prob.cpu().detach().numpy()])
+                all_classes[ob].append(
+                    [float(x) for x in truth_onehot.cpu().detach().numpy()])
+            else:
+                arr_list = output_prob.cpu().detach().numpy().tolist()
+                arr_list = [
+                    ','.join([str(y) for y in x]) for x in arr_list
+                ]
+                all_probs[ob].append(arr_list)
+                all_classes[ob].append(
+                    [float(np.argmax(x)) 
+                     for x in truth_onehot.cpu().detach().numpy()])
+
             metrics_workhorse.update(
                 truth_onehot.to('cpu').detach(),
                 output_onehot.to('cpu').detach(),
@@ -347,15 +392,20 @@ if __name__ == "__main__":
 
         if args.model_path is not None:
             state_dict[fold] = {}
-            state_dict[fold]['network'.format(i)] = stacked_network.to('cpu').state_dict()
+            state_dict[fold]['network'.format(i)] = stacked_network.to(
+                'cpu').state_dict()
 
             state_dict[fold]['means'] = []
             state_dict[fold]['stds'] = []
+            state_dict[fold]['minimum'] = []
+            state_dict[fold]['maximum'] = []
             state_dict[fold]['training_set'] = training_set
             state_dict[fold]['testing_set'] = testing_set
             for D in all_datasets:
                 state_dict[fold]['means'].append(D.mean)
                 state_dict[fold]['stds'].append(D.std)
+                state_dict[fold]['minimum'].append(D.minimum)
+                state_dict[fold]['maximum'].append(D.maximum)
             if all_other_datasets is not None:
                 for D in all_other_datasets:
                     state_dict[fold]['means'].append(D.mean)
@@ -364,6 +414,7 @@ if __name__ == "__main__":
     for ob in range(len(all_probs)):
         for fold_idx,(p,c) in enumerate(zip(all_probs[ob],all_classes[ob])):
             for p_,c_ in zip(p,c):
-                print('PROBS_CLASS,{},{},{},{},{}'.format(fold_idx,ob,p_,c_,labels.unique_labels[int(c_)]))
+                print('PROBS_CLASS,{},{},{},{},{}'.format(
+                    fold_idx,ob,p_,c_,labels.unique_labels[int(c_)]))
     if args.model_path is not None:
         torch.save(state_dict,args.model_path)

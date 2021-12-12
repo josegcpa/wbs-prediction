@@ -23,7 +23,8 @@ with h5py.File(H5_FILE,'r') as F:
             for cell_idx in F[k]['cells']:
                 all_cells.append(F[k]['cells'][cell_idx][::])
             all_cells = np.concatenate(all_cells,axis=0)
-            all_cells_ = all_cells[np.all(all_cells >= (m),axis=1),]
+            all_cells_ = all_cells
+            all_cells_ = all_cells_[np.all(all_cells_ >= (m),axis=1),]
             all_cells_ = all_cells_[np.all(all_cells_ <= (M),axis=1),]
             features = {
                 'mean':np.mean(all_cells_,axis=0),

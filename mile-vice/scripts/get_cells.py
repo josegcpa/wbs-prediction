@@ -149,7 +149,6 @@ if __name__ == "__main__":
 
             print(key + ',' + ','.join(output))
 
-
     elif args.mode == 'cells':
         for key in mutual_keys:
             n0 = np.minimum(all_datasets[0].all_datasets[key].n_cells,

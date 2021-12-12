@@ -1,13 +1,10 @@
 print('-'*20)
 import argparse
-import sys
 import torch
-import psutil
-import pickle
-import time
 import h5py
 import openslide
 import re
+from tqdm import tqdm
 
 from networks import *
 from data_generator import *
@@ -48,10 +45,16 @@ if __name__ == "__main__":
     parser.add_argument('--subset',dest='subset',
                         action='store',
                         type=int,
-                        default=None)
+                        default=100)
     parser.add_argument('--flip',dest='flip',
                         default=False,
                         action='store_true')
+    parser.add_argument('--feature_subset',dest='feature_subset',
+                        default=None,
+                        action='store')
+    parser.add_argument('--size',dest='size',type=int,
+                        default=None,
+                        action='store')
 
     args = parser.parse_args()
 
@@ -60,9 +63,25 @@ if __name__ == "__main__":
     else:
           dev = "cpu"
 
+    with open(args.feature_subset,"r") as o:
+        try:
+            feature_subset = [
+                int(x.strip())-1 for x in o.read().strip().split(',')]
+        except:
+            feature_subset = []
+    if len(feature_subset) == 0:
+        feature_subset = None
+
+    if args.size is not None:
+        S = args.size
+        HS = args.size//2
+
     ni = args.network_idx
+    
+    # loading state dict and inferring network architecture from it
     state_dict = torch.load(args.model_path,map_location='cpu')
     network_state_dict = state_dict[args.fold]['network']
+
     n_features = [
         network_state_dict[k].shape[-1]
         for k in network_state_dict
@@ -71,8 +90,7 @@ if __name__ == "__main__":
         int(network_state_dict[k].shape[0])
         for k in network_state_dict
         if len(network_state_dict[k].shape) == 4]
-    final_layer_names = [x
-                         for x in network_state_dict
+    final_layer_names = [x for x in network_state_dict
                          if re.search("final.*weight",x)]
     final_layers= [network_state_dict[x]
                    for x in final_layer_names]
@@ -80,17 +98,19 @@ if __name__ == "__main__":
     od_features = [int(x.shape[-1] - np.sum(n_virtual_cells))
                    for x in final_layers]
 
+    # assembling network and opening files, loading data moments
     stacked_network = VirtualCellClassifierStack(
         n_input_features=n_features,
         n_virtual_cells=n_virtual_cells,
-        other_datasets_sizes=od_features,
+        other_datasets_sizes=[od_features[0]],
         n_classes=n_classes).to(dev)
 
     stacked_network.load_state_dict(network_state_dict)
+    stacked_network.train(False)
 
-    means = np.squeeze(state_dict[args.fold]['means'][ni])
-    stds = np.squeeze(state_dict[args.fold]['stds'][ni])
-
+    means = [np.squeeze(x) for x in state_dict[args.fold]['means']]
+    stds = [np.squeeze(x) for x in state_dict[args.fold]['stds']]
+    
     slide = openslide.OpenSlide(args.slide_path)
     aggregates = h5py.File(args.aggregates_path,'r')
     segmentations = h5py.File(args.segmented_path,'r')
@@ -98,82 +118,53 @@ if __name__ == "__main__":
 
     vcq = stacked_network.vcq_list[ni]
 
-    if args.subset is not None:
-        subset_size = args.subset
-        all_sizes = [
-            aggregates['cells'][x].shape[0]
-            for x in aggregates['cells']]
-        n_cells = sum(all_sizes)
-        if subset_size > n_cells:
-            subset_size = n_cells
-        subset_of_cells = np.random.choice(
-            n_cells,
-            size=subset_size,replace=False)
-        subset_of_cells = np.sort(subset_of_cells)
-        corresponding_subsets = np.floor(subset_of_cells / all_sizes[0])
-        subset_dict = {}
-        for c,s in zip(subset_of_cells,corresponding_subsets):
-            s = int(s)
-            c = c % all_sizes[0]
-            if s not in subset_dict:
-                subset_dict[s] = [c]
-            else:
-                subset_dict[s].append(c)
-        for subset in subset_dict:
-            a = all_sizes[0] * subset
-            for cell_idx in subset_dict[s]:
-                cell = aggregates['cells'][str(subset)][cell_idx,:]
-                i = cell_idx + a
-                cell_center = aggregates['cell_centers'][i]
-                cell_center_int = cell_center.decode('utf-8')[1:-1].split(',')
-                cell_center_int = [float(cell_center_int[0]),float(cell_center_int[1])]
-                cell_coordinates = segmentations[cell_center]
-                x = cell_coordinates['X'][::]
-                y = cell_coordinates['Y'][::]
-                location = [x.min()-3,y.min()-3]
-                size = [x.max()-location[0] + 6,y.max()-location[1] + 6]
-                if args.flip == True:
-                    location = [location[1],location[0]]
-                    size = [size[1],size[0]]
-                image = np.array(slide.read_region(location,0,size))[:,:,:3]
-                cell_transformed = (cell - means)/stds
-                cell_transformed = cell_transformed[
-                    np.newaxis,np.newaxis,np.newaxis,:]
-                cell_transformed = torch.Tensor(np.float32(cell_transformed))
-                vc = vcq.get_virtual_cells(cell_transformed).to('cpu').detach().numpy()
-                i += 1
-                g = output.create_group(cell_center)
-                g.create_dataset('image',data=image,dtype=np.uint8)
-                g.create_dataset('cell_type',data=vc,dtype=np.float32)
-                g.create_dataset('features',data=cell,dtype=np.float64)
-                g.create_dataset('cell_center_y',data=cell_center_int[0])
-                g.create_dataset('cell_center_x',data=cell_center_int[1])
+    subset_size = args.subset
+    
+    all_cells = []
+    all_cell_centers = aggregates['cell_centers'][()]
+    for cell_group in aggregates['cells']:
+        all_cells.append(aggregates['cells'][cell_group][()])
+    all_cells = np.concatenate(all_cells,axis=0)
+    if feature_subset is not None:
+        all_cells = all_cells[:,feature_subset]
+    cell_transformed = (all_cells-means[ni])/stds[ni]
+    cell_transformed = cell_transformed[np.newaxis,np.newaxis,:,:]
+    cell_transformed = torch.Tensor(np.float32(cell_transformed))
+    all_vc = vcq.f(cell_transformed)
+    cell_proportions = np.squeeze(vcq.g(all_vc).detach().numpy())
+    all_vc = all_vc.to('cpu').detach().numpy()
+    all_vc = all_vc[0,:,:,0].T
 
-    else:
-        i = 0
-        for subset in aggregates['cells']:
-            for cell in aggregates['cells'][subset]:
-                cell_center = aggregates['cell_centers'][i]
-                cell_center_int = cell_center.decode('utf-8')[1:-1].split(',')
-                cell_center_int = [float(cell_center_int[0]),float(cell_center_int[1])]
-                cell_coordinates = segmentations[cell_center]
-                x = cell_coordinates['X'][::]
-                y = cell_coordinates['Y'][::]
-                location = [x.min()-3,y.min()-3]
-                size = [x.max()-location[0] + 6,y.max()-location[1] + 6]
-                if args.flip == True:
-                    location = [location[1],location[0]]
-                    size = [size[1],size[0]]
-                image = np.array(slide.read_region(location,0,size))[:,:,:3]
-                cell_transformed = (cell - means)/stds
-                cell_transformed = cell_transformed[
-                    np.newaxis,np.newaxis,np.newaxis,:]
-                cell_transformed = torch.Tensor(np.float32(cell_transformed))
-                vc = vcq.get_virtual_cells(cell_transformed).to('cpu').detach().numpy()
-                i += 1
-                g = output.create_group(cell_center)
-                g.create_dataset('image',data=image,dtype=np.uint8)
-                g.create_dataset('cell_type',data=vc,dtype=np.float32)
-                g.create_dataset('features',data=cell,dtype=np.float64)
-                g.create_dataset('cell_center_y',data=cell_center_int[0])
-                g.create_dataset('cell_center_x',data=cell_center_int[1])
+    output['cell_proportions'] = cell_proportions
+    cell_idx_subset = np.random.choice(
+        all_cells.shape[0],np.minimum(subset_size,all_cells.shape[0]),
+        replace=False)
+
+    cell_group_h5 = output.create_group('cells')
+    for cell_idx in cell_idx_subset:
+        cell_center = all_cell_centers[cell_idx]
+        vc = all_vc[cell_idx,:]
+        cell = all_cells[cell_idx,:]
+        cell_center_int = cell_center.decode('utf-8')[1:-1].split(',')
+        cell_center_int = [float(cell_center_int[0]),float(cell_center_int[1])]
+        cell_coordinates = segmentations[cell_center]
+        x = cell_coordinates['X'][::]
+        y = cell_coordinates['Y'][::]
+        if args.size is None:
+            location = [x.min()-3,y.min()-3]
+            size = [x.max()-location[0] + 6,y.max()-location[1] + 6]
+        else:
+            cx,cy = (x.max()+x.min())/2,(y.max()+y.min())/2
+            cx,cy = [np.round(el) for el in [cx,cy]]
+            location = int(cx-HS),int(cy-HS)
+            size = S,S
+        if args.flip == True:
+            location = [location[1],location[0]]
+            size = [size[1],size[0]]
+        image = np.array(slide.read_region(location,0,size))[:,:,:3]
+        g = cell_group_h5.create_group(cell_center)
+        g.create_dataset('image',data=image,dtype=np.uint8)
+        g.create_dataset('cell_type',data=vc,dtype=np.float32)
+        g.create_dataset('features',data=cell,dtype=np.float64)
+        g.create_dataset('cell_center_y',data=cell_center_int[0])
+        g.create_dataset('cell_center_x',data=cell_center_int[1])

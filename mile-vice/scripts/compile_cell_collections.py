@@ -3,6 +3,7 @@ from glob import glob
 import os
 import argparse
 import numpy as np
+import re
 
 if __name__ == "__main__":
     print("Reading cmd line arguments...")
@@ -36,8 +37,8 @@ if __name__ == "__main__":
     output = h5py.File(args.output_path,'w')
     i = 0
     for h5 in all_h5:
-        print(h5)
-        F = h5py.File(h5,'r')
+        F_ = h5py.File(h5,'r')
+        F = F_['cells']
         all_keys = list(F.keys())
         S = np.minimum(len(all_keys),args.n)
         k_subset = np.random.choice(all_keys,S,replace=False)

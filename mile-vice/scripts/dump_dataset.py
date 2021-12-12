@@ -8,6 +8,7 @@ OUTPUT_FILE = sys.argv[2]
 SUBSET = int(sys.argv[3])
 
 O = open(OUTPUT_FILE,'w')
+all_cell_sizes = []
 with h5py.File(H5_FILE,'r') as F:
     keys = F.keys()
     for k in tqdm(keys):

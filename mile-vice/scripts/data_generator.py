@@ -29,16 +29,23 @@ class HDF5Dataset:
         for _s in np.unique(S_subset):
             idx = S_index[S_subset == _s]
             if len(idx) > 0:
-                tmp = self.F['cells'][str(_s)][::]
+                tmp = self.F['cells'][str(_s)][()]
                 output[acc:(acc+len(idx)),:] = tmp[idx,:]
                 acc += len(idx)
         return output
+    
+    def return_all_cells(self):
+        all_cells = []
+        for s in self.F['cells']:
+            all_cells.append(self.F['cells'][str(s)][()])
+        all_cells = np.concatenate(all_cells,axis=0)
+        return all_cells
 
 class BatchGenerator:
     def __init__(self,datasets,labels,id_subset,
                  other_datasets=None,
                  n_cells=1000,batch_size=25,
-                 normalize=True):
+                 normalize=True,normalize_range=False):
         self.datasets = datasets
         self.labels = labels
         self.id_subset = id_subset
@@ -46,14 +53,18 @@ class BatchGenerator:
         self.n_cells = n_cells
         self.batch_size = batch_size
         self.normalize = normalize
+        self.normalize_range = normalize_range
 
     def fetch_batch(self,ids=None):
         if ids is None:
             ids = np.random.choice(
                 self.id_subset,size=self.batch_size,
                 replace=self.batch_size>len(self.datasets[0].keys))
-        x = [d.generate_n_cells(ids,self.n_cells,self.normalize)
+        x = [d.generate_n_cells(
+             ids,self.n_cells,
+             norm=self.normalize,normalize_range=self.normalize_range)
              for d in self.datasets]
+        n_cells = [d.get_n_cells(ids) for d in self.datasets]
         if self.other_datasets is not None:
             other_x = [d[ids] for d in self.other_datasets]
         else:
@@ -61,7 +72,8 @@ class BatchGenerator:
         return {'datasets':x,
                 'other_datasets':other_x,
                 'labels':self.labels[ids],
-                'slide_ids':ids}
+                'slide_ids':ids,
+                'n_cells':n_cells}
 
 class QueueGenerator:
     def __init__(self,datasets,labels,id_subset,
@@ -120,7 +132,7 @@ class GenerateFromDataset:
             try:
                 d = HDF5Dataset(self.dataset[k])
                 if self.min_cells:
-                    if d.n_cells >= args.min_cells:
+                    if d.n_cells >= self.min_cells:
                         self.all_datasets[k] = d
                 else:
                     self.all_datasets[k] = d
@@ -128,7 +140,7 @@ class GenerateFromDataset:
                 pass
         self.keys = [x for x in self.all_datasets.keys()]
 
-    def generate_n_cells(self,S,n_cells,norm=True):
+    def generate_n_cells(self,S,n_cells,norm=True,normalize_range=False):
         n_datasets = len(S)
         output = np.zeros([n_datasets,n_cells,self.n_features])
         for d in range(n_datasets):
@@ -137,6 +149,19 @@ class GenerateFromDataset:
         if norm == True:
             output = output - self.mean
             output /= self.std
+        if normalize_range == True:
+            output = (output-self.minimum)/(self.maximum-self.minimum)
+        return output
+
+    def get_n_cells(self,S):
+        """
+        Returns the number of cells for a given sample.
+        """
+        n_datasets = len(S)
+        output = np.zeros([n_datasets])
+        for d in range(n_datasets):
+            x = self.all_datasets[S[d]].n_cells
+            output[d] = x
         return output
 
     def get_moments(self):
@@ -148,6 +173,23 @@ class GenerateFromDataset:
         self.mean = np.mean(big_mat,axis=0)[np.newaxis,np.newaxis,:]
         self.var = np.var(big_mat,axis=0)[np.newaxis,np.newaxis,:]
         self.std = np.sqrt(self.var)
+        big_mat = (big_mat - self.mean) / self.std
+        big_mat = big_mat[0,:,:]
+        self.maximum = np.max(big_mat,axis=0)
+        self.maximum = self.maximum[np.newaxis,np.newaxis,:]
+        self.minimum = np.min(big_mat,axis=0)
+        self.minimum = self.minimum[np.newaxis,np.newaxis,:]
+
+    def get_min_max(self,keys=None):
+        big_mat = []
+        if keys is None:
+            keys = self.keys
+        for key in keys:
+            big_mat.append(self.all_datasets[key].return_n_cells(
+                self.all_datasets[key].n_cells))
+        big_mat = np.concatenate(big_mat,axis=0)
+        big_mat = (big_mat - self.mean) / self.std
+        big_mat = big_mat[0,:,:]
         self.maximum = np.max(big_mat,axis=0)
         self.maximum = self.maximum[np.newaxis,np.newaxis,:]
         self.minimum = np.min(big_mat,axis=0)
@@ -174,21 +216,31 @@ class Labels:
         return self.one_hot[ids_idx]
 
 class CSVDataset:
-    # data has to be in format id,feature1,feature2,...
     def __init__(self,
                  csv_path,
                  prop_num=0.5,
                  handle_nans=None):
+        # data has to be in format id,feature1,feature2,...
         self.csv_path = csv_path
         self.pn = prop_num
         self.get_features()
         self.normalize = False
-        if handle_nans == 'remove':
+        self.handle_nans = handle_nans
+        if self.handle_nans == 'remove':
             self.remove_nans()
             self.get_moments(self.keys)
+        elif self.handle_nans == 'median_impute':
+            self.medians = np.ones([1,self.final_array.shape[1]])*np.nan
+            self.get_moments(self.keys)
+        else:
+            raise Exception(
+                "{} not implemented for handle_nans in CSVDataset!".format(
+                    handle_nans))
 
     def is_numeric(self,s):
         n_dot = 0
+        if s == '':
+            return False
         for i,c in enumerate(s):
             if c == '-':
                 if i != 0:
@@ -235,7 +287,7 @@ class CSVDataset:
 
         self.num_cols_ext = [list(map(self.is_numeric,x))
                              for x in all_columns]
-        self.num_cols = [sum(x)>len(self.ids)*self.pn
+        self.num_cols = [sum(x)>(len(self.ids)*self.pn)
                          for x in self.num_cols_ext]
 
         final_columns = []
@@ -268,16 +320,23 @@ class CSVDataset:
     def get_moments(self,id_list):
         self.normalize = False
         arr = self.__getitem__(id_list)
+        if self.handle_nans == "median_impute":
+            self.medians = np.zeros([1,arr.shape[1]])
+            for i in range(arr.shape[1]):
+                self.medians[0,i] = np.nanmedian(arr[:,i])
         self.mean = np.zeros([1,arr.shape[1]])
         self.std = np.ones([1,arr.shape[1]])
         for i in self.columns_to_normalize:
-            self.mean[0,i] = np.mean(arr[:,i])
-            self.std[0,i] = np.std(arr[:,i])
+            self.mean[0,i] = np.nanmean(arr[:,i])
+            self.std[0,i] = np.nanstd(arr[:,i])
         self.normalize = True
 
     def __getitem__(self,id_list):
         id_list = [self.ids[x] for x in id_list]
         o = self.final_array[id_list,:]
+        if self.handle_nans == "median_impute":
+            for i in range(o.shape[1]):
+                o[np.isnan(o[:,i]),i] = self.medians[0,i]
         if self.normalize == True:
             o = (o - self.mean)/self.std
         return o

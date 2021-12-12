@@ -100,3 +100,16 @@ class VirtualCellClassifierStack(torch.nn.Module):
             features.extend(other_datasets)
         feature_tensor = torch.cat(features,dim=-1)
         return self.final_layers[i](feature_tensor)
+
+    def get_cells(self,x,i=0):
+        """
+        Virtual cell proportions for classifier i
+        args:
+            * x - Cell features
+            * i - index of the final_layer
+        """
+        cell_dataset = x
+        features = []
+        for vcq,cd in zip(self.vcq_list,cell_dataset):
+            features.append(vcq.get_virtual_cells(cd))
+        return features
