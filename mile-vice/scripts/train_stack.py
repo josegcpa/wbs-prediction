@@ -227,7 +227,6 @@ if __name__ == "__main__":
                 B = queued_dataset.fetch_batch()
                 sampled_datasets = [x[:,np.newaxis,:,:]
                                     for x in B['datasets']]
-                print([x.shape for x in sampled_datasets])
                 truth = torch.LongTensor(B['labels']).to(dev)
                 slide_ids = B['slide_ids']
                 d = [torch.Tensor(x).to(dev) for x in sampled_datasets]
