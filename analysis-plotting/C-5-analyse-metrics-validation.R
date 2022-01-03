@@ -44,8 +44,8 @@ metrics_cv %>%
   ggplot(aes(x = factor(task,rev(model_levels)),y = value, fill = dataset)) + 
   geom_bar(stat = "identity",position = position_dodge(width = 0.9)) +
   geom_linerange(data = all_auc_validation_df,position = position_dodge(width = 0.9),
-                 aes(ymin = value - 1/sqrt(N),
-                     ymax = ifelse(value + 1/sqrt(N) > 1,1,value + 1/sqrt(N))),
+                 aes(ymin = auc_lower_ci(value,N/2,N/2),
+                     ymax = auc_upper_ci(value,N/2,N/2)),
                  alpha = 1,size = 0.5,shape = 5) + 
   geom_point(data = all_auc_validation_df,position = position_dodge(width = 0.9),
              alpha = 1,size = 2,shape = 18,colour = "white") + 

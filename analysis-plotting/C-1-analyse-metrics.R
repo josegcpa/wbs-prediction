@@ -166,10 +166,11 @@ all_roc_df %>%
   mutate(nvc = factor(nvc,levels = sort(unique(nvc)))) %>% 
   group_by(task,multi_objective,dataset) %>% 
   mutate(MAX = ifelse(value == max(value),"X",NA)) %>% 
+  distinct %>% 
   ggplot(aes(x = task,y = nvc,fill = value)) + 
   geom_tile() +
   geom_tile(aes(colour = MAX),fill = NA,size = 0.5) +
-  geom_text(aes(label = sprintf("%.3f",value)),colour = "black",size = 2) +
+  geom_text(aes(label = sprintf("%.2f",value)),colour = "black",size = 2) +
   theme_pretty(base_size = 6) +
   coord_flip() +
   theme(legend.position = "bottom",
@@ -319,7 +320,7 @@ best_models_roc_curves_df %>%
 # compare with glmnet -----------------------------------------------------
 
 glmnet_scores <- read.csv("data_output/glmnet-auroc.csv") %>% 
-  select(dataset = data_type,task,glmnet_auc = auc_value) %>%
+  select(dataset = data_type,task,glmnet_auc = auc_value,NP,NN) %>%
   distinct %>%
   merge(rbind(best_models_so,best_models_mo),
         by = c("task","dataset")) %>%
@@ -342,6 +343,11 @@ ggplot(glmnet_scores,aes(x = task,y = value,fill = key)) +
                colour = mo),
            fill = NA,
            position = position_dodge(width = 0.95)) +
+  geom_linerange(aes(ymin = auc_lower_ci(value,NP,NN),
+                     ymax = auc_upper_ci(value,NP,NN),
+                     group = reorder(paste(key,mo),mo*1000 + as.numeric(key))),
+                 position = position_dodge(width = 0.95),
+                 size = 0.25) +
   scale_y_continuous(labels = function(x) sprintf("%.1f%%",x*100),expand = c(0.05,0,0,0)) + 
   ylab("AUC") +
   xlab("") +

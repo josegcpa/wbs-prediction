@@ -47,9 +47,9 @@ fine_to_not_so_fine <- c(
 
 # cell counts -------------------------------------------------------------
 
-qc_count <- read_csv("../mile-vice/data_output/qc_count.csv",
-                     col_names = c("slide_id","good_quality_tiles","total_tiles"),
-                     col_types = c(col_character(),col_integer(),col_integer()))
+qc_count <- read_csv("datasets/qc_summary.csv",
+                     col_names = c("slide_id","dataset",
+                                   "good_quality_tiles","total_tiles"))
 
 rbc_counts <-  rbind(
   read_csv(
@@ -193,6 +193,10 @@ tmp <- merge(wbc_counts,qc_count,by = "slide_id") %>%
   mutate(cellular_density = counts/good_quality_tiles) %>%
   na.omit()
 
+tmp_rbc <- merge(rbc_counts,qc_count,by = "slide_id") %>%
+  mutate(cellular_density = counts/good_quality_tiles) %>%
+  na.omit()
+
 rob_cor_est <- pbcor(tmp$wbc_ul,tmp$cellular_density,ci = T,seed = 42)
 
 cat(sprintf("robust R2 = %.4f (CI = [%.4f,%.4f],p-value = %f)",
@@ -209,6 +213,39 @@ tmp %>%
   xlab("WBC density (WBC/good quality tile)") + 
   ylab("WBC counts (WBC/dL)") +
   ggsave("figures/wbc-density-concentration.pdf",height = 1.5,width = 1.9) 
+
+tmp %>%
+  ggplot(aes(x = good_quality_tiles,y = counts)) +
+  geom_point(size = 0.25) + 
+  scale_y_continuous(trans = 'log10') +
+  scale_x_continuous(trans = 'log10') + 
+  geom_smooth(method = "lm",formula = y ~ x,colour = "goldenrod",size = 0.25) + 
+  theme_pretty(base_size = 6) +
+  xlab("Detected WBC") + 
+  ylab("Good quality slides") +
+  ggsave("figures/wbc-good-quality.pdf",height = 1.5,width = 1.9) 
+
+tmp_rbc %>%
+  ggplot(aes(x = good_quality_tiles,y = counts)) +
+  geom_point(size = 0.25) + 
+  scale_y_continuous(trans = 'log10') +
+  scale_x_continuous(trans = 'log10') + 
+  geom_smooth(method = "lm",formula = y ~ x,colour = "goldenrod",size = 0.25) + 
+  theme_pretty(base_size = 6) +
+  xlab("Detected RBC") + 
+  ylab("Good quality slides") +
+  ggsave("figures/rbc-good-quality.pdf",height = 1.5,width = 1.9) 
+
+cor_wbc <- pbcor(tmp$good_quality_tiles,tmp$counts,ci = T,seed = 42)
+cor_rbc <- pbcor(tmp_rbc$good_quality_tiles,tmp_rbc$counts,ci = T,seed = 42)
+
+cat(sprintf("robust R2 (Detected WBC vs. good quality tiles) = %.4f (CI = [%.4f,%.4f],p-value = %f)",
+            cor_wbc$cor^2,cor_wbc$cor_ci[1]^2,cor_wbc$cor_ci[2]^2,
+            cor_wbc$p.value))
+
+cat(sprintf("robust R2 (Detected RBC vs. good quality tiles) = %.4f (CI = [%.4f,%.4f],p-value = %f)",
+            cor_rbc$cor^2,cor_rbc$cor_ci[1]^2,cor_rbc$cor_ci[2]^2,
+            cor_rbc$p.value))
 
 # feature distribution per condition (wbc) --------------------------------
 

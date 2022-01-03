@@ -1189,7 +1189,7 @@ ggplot(ratio_umap_df,aes(x = V1,y = V2,colour = dataset)) +
 
 ## Excluding features which are predictive of dataset
 
-Here I exclude features which have some predictive power (either AUC < 0.35 or AUC > 0.65) in terms of predicting the dataset from which the data originated. 
+Here I exclude features which have some predictive power (either AUC < 0.33 or AUC > 0.66) in terms of predicting the dataset from which the data originated. 
 
 ```{r,fig.height=1.1,fig.width=4.5}
 n1 <- nrow(full_dataset_collection$data$morphology)
@@ -1259,6 +1259,50 @@ plot_grid(
     theme(legend.key.size = unit(0,"cm")),
   ncol = 3) + 
   ggsave(filename = "figures/umap-datasets-both-no-facet-unbiased.pdf",height=1.1,width=4.5)
+```
+
+```{r,fig.height=1.5,fig.width=3}
+plot_grid(
+  data.frame(features = colnames(combined_datasets)[1:ncol(combined_datasets)-1],
+             AUC = dataset_AUC_values) %>%
+    mutate(cell_type = ifelse(grepl("RBC",features),"RBC","WBC")) %>%
+    ggplot(aes(x = features,y = AUC)) + 
+    geom_point(size = 0.5) + 
+    annotate(x = 90,y = 2/3 + 1/6,height = 1/3,width = 200,
+             geom = "tile",inherit.aes=F,
+             alpha = 0.5,fill = "grey") +
+    annotate(x = 90,y = 1/6,height = 1/3,width = 200,
+             geom = "tile",inherit.aes=F,
+             alpha = 0.5,fill = "grey") +
+    theme_pretty(base_size = 6) + 
+    facet_wrap(~ cell_type) + 
+    geom_hline(yintercept = 1/3,linetype = 2,size = 0.25) + 
+    geom_hline(yintercept = 2/3,linetype = 2,size = 0.25) + 
+    xlab("Features") + 
+    theme(axis.text.x = element_blank(),axis.ticks.x = element_blank()) + 
+    scale_y_continuous(expand = c(0,0)),
+  data.frame(features = colnames(combined_datasets)[1:ncol(combined_datasets)-1],
+             AUC = dataset_AUC_values) %>%
+    mutate(cell_type = ifelse(grepl("RBC",features),"RBC","WBC")) %>%
+    mutate(keep = AUC > 1/3 & AUC < 2/3) %>%
+    group_by(cell_type) %>%
+    mutate(Total = length(unique(features))) %>%
+    group_by(keep,cell_type,Total) %>%
+    summarise(N = length(unique(features))) %>%
+    ggplot(aes(x = cell_type,y = N/Total,fill = keep)) + 
+    geom_bar(stat = "identity") + 
+    theme_pretty(base_size = 6) + 
+    scale_y_continuous(expand = c(0,0)) + 
+    theme(legend.position = "bottom",legend.key.size = unit(0.2,"cm"),
+          axis.title.x = element_blank(),legend.margin = unit(0,"cm")) + 
+    guides(fill = guide_legend(nrow = 2)) + 
+    scale_fill_aaas(name = NULL,labels = c("Discarded","Kept")) + 
+    ylab("Fraction of features"),
+  align = "hv",
+  axis = "tb",
+  rel_widths = c(1,0.5)
+) + 
+  ggsave("figures/auc-discarded.pdf",height = 1.5,width = 3)
 ```
 
 After observing that this, naturally, eliminates the clear segregation between datasets, I retrain the predictive models using the subset of poorly predictive features in terms of dataset prediction. 
@@ -1490,7 +1534,8 @@ for (data_type in data_types) {
                anaemia_classification = "Anaemia classification")[ID],
       data_type = data_type,
       N = nrow(dat)
-    )
+    ) %>%
+      mutate(NP = length(roc_curve$cases),NN = length(roc_curve$controls))
     tmp <- get.coords.for.ggplot(roc_curve) %>%
       as.tibble %>%
       mutate(data_type = data_type)
@@ -1542,7 +1587,7 @@ all_roc_df %>%
   geom_bar(stat = "identity",position = position_dodge(width = 0.9)) + 
   geom_linerange(data = validation_aucs_df,position = position_dodge(width = 0.9),
                  aes(ymin = auc_value - 1/sqrt(N),
-                     ymax = ifelse(auc_value + 1/sqrt(N) > 1,1,auc_value + 1/sqrt(N))),
+                     ymax = min(auc_value + 1/sqrt(N),1)),
                  alpha = 1,size = 0.5,shape = 5) + 
   geom_point(data = validation_aucs_df,position = position_dodge(width = 0.9),
              alpha = 1,size = 2,shape = 18,colour = "white") + 

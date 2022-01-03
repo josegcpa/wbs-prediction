@@ -125,20 +125,36 @@ generate_plots <- function(tmp_data) {
     
   heatmap_plot <- tmp_data %>%
     group_by(virtual_cell_type,model_id) %>%
-    filter(any(N/total_annotated > threshold)) %>% 
-    ggplot(aes(y = label,x = as.factor(virtual_cell_type),
-               fill = cut(N/total_annotated,seq(0,1,by = 0.25)))) + 
+    mutate(expected_proportion = total_annotated/big_total,
+           observed_proportion = N/total) %>%
+    mutate(Enrichment = observed_proportion /expected_proportion) %>% 
+    rowwise() %>%
+    mutate(p.val = fisher.test(matrix(
+      c(N,total-N,total_annotated,big_total-total_annotated),nrow = 2),
+      alternative = "greater")$p.val) %>%
+    mutate(sig = ifelse(p.val < 0.05,"*",NA)) %>% 
+    mutate(vcf = paste(model_id,virtual_cell_type)) %>%
+    group_by(vcf) %>%
+    mutate(S = -as.numeric(label)[which.max(Enrichment)]) %>%
+    ungroup %>%
+    mutate(vcf = reorder(vcf,S)) %>%
+    group_by(vcf) %>%
+    filter(any(sig == '*')) %>% 
+    ggplot(aes(y = label,x = vcf,
+               fill = Enrichment)) + 
     geom_tile() + 
-    scale_fill_brewer(name = "Proportion of virtual cell type") + 
-    facet_wrap(~ model_id,scales="free_x",
-               ncol = 1) + 
+    geom_text(aes(label = sig),vjust = 0.75) +
+    scale_fill_gradient2(name = "Enrichment",midpoint = 0, trans = 'log10',
+                         low = "blue4",mid = "grey95",high = "red4") + 
+    facet_wrap(~ model_id,scales="free_x",ncol = 1) + 
     theme_pretty(base_size = 6) + 
     xlab("Virtual cell type") + 
     ylab("Expert annotation") + 
     theme(legend.position = "bottom",
           legend.key.height = unit(0.2,"cm")) + 
     guides(fill = guide_legend(nrow = 1)) + 
-    scale_size(limits = c(0,1))
+    scale_size(limits = c(0,1)) + 
+    scale_x_discrete(labels = function(x) str_match(x,'[0-9]+$'))
   
   return(list(heatmap_plot = heatmap_plot,entropy_plot = entropy_plot,
               count_plot = count_plot))
@@ -181,13 +197,18 @@ wbc_labels %>%
   summarise(N = sum(all_same),Total = length(unique(center_idx))) %>% 
   mutate(P = N/Total) %>% 
   arrange(P) %>% 
-  ggplot(aes(x = P,y = reorder(label,P))) + 
+  rowwise() %>%
+  mutate(ymin = prop.test(N,Total)$conf.int[1],
+         ymax = prop.test(N,Total)$conf.int[2]) %>%
+  ggplot(aes(x = P,y = reorder(label,P),
+             xmin = ymin,xmax = ymax)) + 
   geom_bar(stat = "identity") + 
-  geom_text(aes(label = sprintf("%s/%s",N,Total)),size = 2,hjust = -0.04) + 
+  geom_linerange() +
+  geom_text(aes(x = 1,label = sprintf("%s/%s",N,Total)),size = 2,hjust = -0.04) + 
   xlab("Proportion of labels with no disagreements") +
   ylab("Expert annotations") + 
   theme_pretty(base_size = 6) +
-  theme(axis.text = element_text(colour = "black")) +
+  theme(axis.text = element_text(colour = "black"),panel.grid.major.y = element_line(size = 0.25,colour = "grey70")) +
   scale_x_continuous(expand = c(0,0,0.2,0),breaks = c(0,0.25,0.5,0.75,1)) +
   ggsave("figures/mile-vice-annotated-cells-wbc-agreement.pdf",height=1.7,width=3)
 
@@ -236,7 +257,6 @@ rbc_labels %>%
   ggsave("figures/mile-vice-annotated-cells-rbc-agreement.pdf",height=1.7,width=3)
 
 # proportions per class ---------------------------------------------------
-
 X <- wbc_labels %>%
   merge(all_conditions,by = "slide_id") %>%
   select(fine_class = coarse_class,slide_id,center_idx,label) %>%
@@ -311,9 +331,9 @@ tmp_data <- wbc_labels %>%
 
 plots <- generate_plots(tmp_data)
 
-plot_grid(plots$heatmap_plot,plots$entropy_plot,plots$count_plot,
-          align = "h",axis = "lrtb",rel_widths = c(1,0.25,0.25),nrow = 1) + 
-  ggsave("figures/mile-vice-annotated-cells-wbc-morphology.pdf",width=5,height=6.5)
+plot_grid(plots$heatmap_plot,plots$count_plot,
+          align = "h",axis = "lrtb",rel_widths = c(1,0.25),nrow = 1) + 
+  ggsave("figures/mile-vice-annotated-cells-wbc-morphology.pdf",width=4,height=6.5)
 
 # wbc (morphology + bc) ---------------------------------------------------
 
@@ -323,9 +343,9 @@ tmp_data <- wbc_labels %>%
 
 plots <- generate_plots(tmp_data)
 
-plot_grid(plots$heatmap_plot,plots$entropy_plot,plots$count_plot,
-          align = "h",axis = "lrtb",rel_widths = c(1,0.25,0.25),nrow = 1) + 
-  ggsave("figures/mile-vice-annotated-cells-wbc-morphology-bc.pdf",width=5,height=6.5)
+plot_grid(plots$heatmap_plot,plots$count_plot,
+          align = "h",axis = "lrtb",rel_widths = c(1,0.25),nrow = 1) + 
+  ggsave("figures/mile-vice-annotated-cells-wbc-morphology-bc.pdf",width=4,height=6.5)
 
 # rbc (morphology) --------------------------------------------------------
 
@@ -335,9 +355,9 @@ tmp_data <- rbc_labels %>%
 
 plots <- generate_plots(tmp_data)
 
-plot_grid(plots$heatmap_plot,plots$entropy_plot,plots$count_plot,
-          align = "h",axis = "lrtb",rel_widths = c(1,0.25,0.25),nrow = 1) + 
-  ggsave("figures/mile-vice-annotated-cells-rbc-morphology.pdf",width=5,height=6.5)
+plot_grid(plots$heatmap_plot,plots$count_plot,
+          align = "h",axis = "lrtb",rel_widths = c(1,0.25),nrow = 1) + 
+  ggsave("figures/mile-vice-annotated-cells-rbc-morphology.pdf",width=4,height=6.5)
 
 
 # rbc (morphology + bc) ---------------------------------------------------
@@ -348,6 +368,9 @@ tmp_data <- rbc_labels %>%
 
 plots <- generate_plots(tmp_data)
 
-plot_grid(plots$heatmap_plot,plots$entropy_plot,plots$count_plot,
-          align = "h",axis = "lrtb",rel_widths = c(1,0.25,0.25),nrow = 1) + 
-  ggsave("figures/mile-vice-annotated-cells-rbc-morphology-bc.pdf",width=5,height=6.5)
+plot_grid(plots$heatmap_plot,plots$count_plot,
+          align = "h",axis = "lrtb",rel_widths = c(1,0.25),nrow = 1) + 
+  ggsave("figures/mile-vice-annotated-cells-rbc-morphology-bc.pdf",width=4,height=6.5)
+
+
+

@@ -633,6 +633,12 @@ for (data_type in c("bcdem","morphology","full")) {
           AUC = glmnet_models[[data_type]][[ID]] %>% 
             lapply(function(x) x$metrics[[s]]$AUC$auc) %>% 
             as.numeric,
+          NP = glmnet_models[[data_type]][[ID]] %>% 
+            lapply(function(x) length(x$metrics[[s]]$AUC$cases)) %>% 
+            as.numeric,
+          NN = glmnet_models[[data_type]][[ID]] %>% 
+            lapply(function(x) length(x$metrics[[s]]$AUC$controls)) %>% 
+            as.numeric,
           Accuracy = glmnet_models[[data_type]][[ID]] %>% 
             lapply(function(x) x$metrics[[s]]$ConfusionMatrix$overall["Accuracy"]) %>% 
             as.numeric,
@@ -652,6 +658,12 @@ for (data_type in c("bcdem","morphology","full")) {
         tibble(
           AUC = rf_models[[data_type]][[ID]] %>% 
             lapply(function(x) x$metrics[[s]]$AUC$auc) %>% 
+            as.numeric,
+          NP = glmnet_models[[data_type]][[ID]] %>% 
+            lapply(function(x) length(x$metrics[[s]]$AUC$cases)) %>% 
+            as.numeric,
+          NN = glmnet_models[[data_type]][[ID]] %>% 
+            lapply(function(x) length(x$metrics[[s]]$AUC$controls)) %>% 
             as.numeric,
           Accuracy = rf_models[[data_type]][[ID]] %>% 
             lapply(function(x) x$metrics[[s]]$ConfusionMatrix$overall["Accuracy"]) %>% 
@@ -679,7 +691,7 @@ for (data_type in c("bcdem","morphology","full")) {
 all_metrics_df <- do.call(rbind,all_metrics) 
 
 all_metrics_df_long <- all_metrics_df %>%
-  gather(key = "key",value = "value",-Set,-task,-Fold,-Model,-data_type)
+  gather(key = "key",value = "value",-Set,-task,-Fold,-Model,-data_type,-NP,-NN)
 
 all_metrics_df_long %>%
   mutate(task = factor(task,
@@ -780,7 +792,8 @@ for (data_type in c("bcdem","morphology","full")) {
                     all_probs_preds$original.predictor,quiet = T)
     tmp <- get.coords.for.ggplot(full_roc) %>%
       as.tibble %>%
-      mutate(data_type = data_type)
+      mutate(data_type = data_type) %>%
+      mutate(NP = length(full_roc$cases),NN = length(full_roc$controls))
     all_roc[[paste(data_type,ID,sep="_")]] <- tmp
     all_roc[[paste(data_type,ID,sep="_")]]$task <- ID
     all_roc[[paste(data_type,ID,sep="_")]]$auc_value <- full_roc$auc
@@ -815,13 +828,16 @@ ggplot(all_roc_df,aes(colour = data_type)) +
   ggsave("figures/roc-curves.pdf",height=2.3,width=2.3)
 
 all_roc_df %>%
-  select(task,data_type,auc_value) %>%
+  select(task,data_type,auc_value,NP,NN) %>%
   distinct %>%
   ggplot(aes(x = reorder(task,desc(task)),y = auc_value, fill = data_type)) + 
   geom_bar(stat = "identity",position = position_dodge(width = 0.9)) + 
   geom_text(aes(label = sprintf("%.1f%%",auc_value*100)),
             position = position_dodge(width = 0.9),
             hjust = -0.1,size = 2) +
+  geom_linerange(aes(ymin = auc_lower_ci(auc_value,NP,NN,alpha=0.05),
+                     ymax = auc_upper_ci(auc_value,NP,NN,alpha=0.05)),
+                 position = position_dodge(width = 0.9)) +
   theme_pretty(base_size = 6) + 
   scale_fill_manual(values = c("blue4","red4","orange"),name = NULL) + 
   theme(legend.position = "bottom",
@@ -1269,7 +1285,7 @@ var_group_importance %>%
   gather(key = "key",value = "value",-task) %>%
   group_by(task) %>%
   mutate(value = abs(value)) %>%
-  mutate(S = sum(value)) %>%
+  mutate(S_ = sum(value)) %>%
   mutate(Proportions = value / sum(value)) %>%
   mutate(S = sum(value)^(1/6)) %>%
   mutate(key = factor(key,
@@ -1386,31 +1402,6 @@ data_types <- c("morphology","full","bcdem")
 validation_aucs <- list()
 all_roc_val <- list()
 
-match_min_max <- function(df1,df2) {
-  # match the min and max of all columns in df2 to those of d1
-  CC <- colnames(df2)
-  m <- matrix(apply(df2,2,min,na.rm=T),nrow=1)
-  M <- matrix(apply(df2,2,max,na.rm=T),nrow=1)
-  df2 <- t(apply(df2,1,function(x) (x - m)/(M-m)))
-  m <- matrix(apply(df1,2,min,na.rm=T),nrow=1)
-  M <- matrix(apply(df1,2,max,na.rm=T),nrow=1)
-  r <- M-m
-  df2 <- t(apply(df2,1,function(x) x * r + m))
-  df2 <- as.data.frame(df2)
-  colnames(df2) <- CC
-  return(df2)
-}
-
-reparametrize_scaler <- function(full_ds,scaler) {
-  col_idx <- which(colnames(full_ds$data$full) %in% scaler$method$remove)
-  d <- full_ds$data$full[,-col_idx]
-  N <- names(scaler$mean) %>%
-    Filter(f = function(x) !grepl("BCDEM",x))
-  scaler$mean[N] <- colMeans(d[,N])
-  scaler$std[N] <- apply(d[,N],2,sd)
-  return(scaler)
-}
-
 for (data_type in data_types) {
   par(mfrow = c(2,4),mar = c(2,0,2,0))
   for (ID in IDs) {
@@ -1452,10 +1443,11 @@ for (data_type in data_types) {
     )
     tmp <- get.coords.for.ggplot(roc_curve) %>%
       as.tibble %>%
-      mutate(data_type = data_type)
+      mutate(data_type = data_type) %>%
+      mutate(NP = length(roc_curve$cases),NN = length(roc_curve$controls))
     all_roc_val[[paste(data_type,ID,sep="_")]] <- tmp
     all_roc_val[[paste(data_type,ID,sep="_")]]$task <- ID
-    all_roc_val[[paste(data_type,ID,sep="_")]]$auc_value <- full_roc$auc
+    all_roc_val[[paste(data_type,ID,sep="_")]]$auc_value <- roc_curve$auc
   }
 }
 

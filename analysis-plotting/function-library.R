@@ -159,6 +159,37 @@ get.coords.for.ggplot <- function(roc) {
   return(df[rev(seq(nrow(df))),])
 }
 
+auc_se <- function(A,np,nn) {
+  dp <- (np-1)*(A/(2-A)-A^2)
+  dn <- (np-1)*((2*A^2)/(1+A)-A^2)
+  o <- sqrt((A * (1-A) + dp + dn)/(np*nn))
+  return(o)
+}
+
+auc_lower_ci <- function(A,np,nn,alpha=0.05) {
+  return(A-auc_se(A,np,nn)*abs(qnorm(alpha/2)))
+}
+
+auc_upper_ci <- function(A,np,nn,alpha=0.05) {
+  return(pmin(1,A+auc_se(A,np,nn)*abs(qnorm(alpha/2))))
+}
+
+decode_model_name <- function(model_names) {
+  O <- ifelse(
+    grepl('multi_objective',model_names),"Multi-objective",
+    ifelse(
+      grepl("anemia_binary",model_names),"Anaemia classification",
+      ifelse(grepl("mds_binary",model_names),"SF3B1mut detection",
+             ifelse(grepl("disease_binary",model_names),
+                    "Disease classification","Disease detection"))))
+  
+  O <- factor(O,levels = c("Disease detection","Disease classification",
+                           "SF3B1mut detection","Anaemia classification",
+                           "Multi-objective"))
+  
+  return(O)
+}
+
 # create-directories ------------------------------------------------------
 
 dir.create("figures/",showWarnings = F)
