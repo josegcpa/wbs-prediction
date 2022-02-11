@@ -1,0 +1,15 @@
+FROM python:3.6.8-slim-jessie
+
+RUN  apt-get update \
+  && apt-get install -y wget \
+  && apt-get install openslide-tools gcc zlib1g -y \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt requirements.txt
+COPY scripts scripts
+COPY Snakefile Snakefile
+COPY pipeline.sh pipeline.sh
+
+RUN pip3 install --upgrade pip
