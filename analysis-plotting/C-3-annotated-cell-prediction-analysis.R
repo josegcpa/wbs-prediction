@@ -120,7 +120,7 @@ generate_plots <- function(tmp_data) {
     facet_wrap(~model_id,ncol=1,scales = "free_x") + 
     theme_pretty(base_size = 6) + 
     theme(axis.text.y = element_blank(),axis.title.y = element_blank()) + 
-    scale_x_continuous(expand = c(0,0),trans = 'log10') + 
+    scale_x_continuous(expand = c(0,0,0.05,0.05),trans = 'log10') + 
     xlab("Count") 
     
   heatmap_plot <- tmp_data %>%
@@ -139,7 +139,7 @@ generate_plots <- function(tmp_data) {
     ungroup %>%
     mutate(vcf = reorder(vcf,S)) %>%
     group_by(vcf) %>%
-    filter(any(sig == '*')) %>% 
+    #filter(any(sig == '*')) %>% 
     ggplot(aes(y = label,x = vcf,
                fill = Enrichment)) + 
     geom_tile() + 
@@ -165,7 +165,18 @@ generate_plots <- function(tmp_data) {
 
 wbc_labels <- lapply(
   list.files(path = "../mile-vice/labelled-cells/output/",
-             pattern = "wbc.+csv",full.names = T),
+             pattern = "^wbc.+csv",full.names = T),
+  read_annotations
+) %>%
+  do.call(what = rbind) %>%
+  mutate(cell_type = "wbc",virtual_cell_type = virtual_cell_type + 1) %>%
+  subset(!(user %in% c(1,2))) %>%
+  mutate(label = wbc_type_conversion[label]) %>% 
+  mutate(label = factor(label,levels = rev(wbc_type_conversion)))
+
+wbc_labels_mo <- lapply(
+  list.files(path = "../mile-vice/labelled-cells/output/",
+             pattern = "^mo_wbc.+csv",full.names = T),
   read_annotations
 ) %>%
   do.call(what = rbind) %>%
@@ -176,7 +187,18 @@ wbc_labels <- lapply(
 
 rbc_labels <- lapply(
   list.files(path = "../mile-vice/labelled-cells/output/",
-             pattern = "rbc.+csv",full.names = T),
+             pattern = "^rbc.+csv",full.names = T),
+  read_annotations
+) %>%
+  do.call(what = rbind) %>%
+  mutate(cell_type = "rbc",virtual_cell_type = virtual_cell_type + 1) %>%
+  subset(!(user %in% c(1,2))) %>%
+  mutate(label = rbc_type_conversion[label]) %>% 
+  mutate(label = factor(label,levels = rev(rbc_type_conversion)))
+
+rbc_labels_mo <- lapply(
+  list.files(path = "../mile-vice/labelled-cells/output/",
+             pattern = "^mo_rbc.+csv",full.names = T),
   read_annotations
 ) %>%
   do.call(what = rbind) %>%
@@ -347,6 +369,16 @@ plot_grid(plots$heatmap_plot,plots$count_plot,
           align = "h",axis = "lrtb",rel_widths = c(1,0.25),nrow = 1) + 
   ggsave("figures/mile-vice-annotated-cells-wbc-morphology-bc.pdf",width=4,height=6.5)
 
+tmp_data <- wbc_labels_mo %>%
+  subset(data_type == "Morphology + B.C.") %>%
+  process_data()
+
+plots <- generate_plots(tmp_data)
+plot_grid(plots$heatmap_plot,plots$count_plot,
+          align = "h",axis = "lrtb",rel_widths = c(1,0.17),nrow = 1) + 
+  ggsave("figures/mile-vice-annotated-cells-mo-wbc-morphology-bc.pdf",
+         height=2,width = 5.5)
+
 # rbc (morphology) --------------------------------------------------------
 
 tmp_data <- rbc_labels %>%
@@ -372,5 +404,13 @@ plot_grid(plots$heatmap_plot,plots$count_plot,
           align = "h",axis = "lrtb",rel_widths = c(1,0.25),nrow = 1) + 
   ggsave("figures/mile-vice-annotated-cells-rbc-morphology-bc.pdf",width=4,height=6.5)
 
+tmp_data <- rbc_labels_mo %>%
+  subset(data_type == "Morphology + B.C.") %>%
+  process_data()
 
+plots <- generate_plots(tmp_data)
+plot_grid(plots$heatmap_plot,plots$count_plot,
+          align = "h",axis = "lrtb",rel_widths = c(1,0.17),nrow = 1) + 
+  ggsave("figures/mile-vice-annotated-cells-mo-rbc-morphology-bc.pdf",
+         height=2,width = 5.5)
 

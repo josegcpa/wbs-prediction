@@ -5,11 +5,8 @@ library(tidyverse)
 library(ggsci)
 
 ggsave <- function(...) {
-  args <- list(...)
-  if ("device" %in% names(args)) {
-    return(ggplot2::ggsave(...))
-  }
-  return(ggplot2::ggsave(useDingbats = F,...))
+  ggplot2::ggsave(...)
+  invisible()
 }
 
 # constants ---------------------------------------------------------------
