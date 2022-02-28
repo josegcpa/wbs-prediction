@@ -1,4 +1,0 @@
-wbc_dataset: "datasets/wbc_subset.h5"
-rbc_dataset: "datasets/rbc_subset.h5"
-cv_string: "cv_subset"
-type: "subset"

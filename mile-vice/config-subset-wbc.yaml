@@ -1,4 +1,0 @@
-wbc_dataset: "datasets/wbc_subset.h5"
-rbc_dataset: "none"
-cv_string: "cv_subset_only_wbc"
-type: "subset_only_wbc"
