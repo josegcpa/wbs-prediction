@@ -53,6 +53,10 @@ if __name__ == "__main__":
                         action='store',
                         type=float,
                         default=0.005)
+    parser.add_argument('--dropout_rate',dest='dropout_rate',
+                        action='store',
+                        type=float,
+                        default=0.)
     parser.add_argument('--n_folds',dest='n_folds',
                         action='store',
                         type=int,
@@ -188,7 +192,8 @@ if __name__ == "__main__":
         all_n_virtual_cells = [args.n_virtual_cells for _ in all_datasets]
         stacked_network = VirtualCellClassifierStack(
             all_input_features,all_n_virtual_cells,
-            other_datasets_size,all_n_classes).to(dev)
+            other_datasets_size,all_n_classes,
+            dropout_rate=args.dropout_rate).to(dev)
         def param_generator():
             for p in stacked_network.parameters():
                 yield p
@@ -234,7 +239,7 @@ if __name__ == "__main__":
                     od = [torch.Tensor(x).to(dev) for x in B['other_datasets']]
                 else:
                     od = None
-                output_prob = stacked_network([d,od],i)
+                output_prob = stacked_network([d,od],i,args.dropout_rate>0.)
                 L = criterion(output_prob,truth)
                 # loss weight based on amount of evidence (number of cells)
                 n_cells = np.array(B['n_cells'])

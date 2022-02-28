@@ -53,6 +53,8 @@ with open(best_model_path,'r') as o:
         except:
             pass
 
+localrules: all, compile_wbc_collections, compile_rbc_collections
+
 rule all:
     input:
         expand("cell-collections/" + dataset_id + "/wbc_{model_id}.h5",

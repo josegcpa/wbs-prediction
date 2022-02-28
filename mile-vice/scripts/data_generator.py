@@ -33,7 +33,7 @@ class HDF5Dataset:
                 output[acc:(acc+len(idx)),:] = tmp[idx,:]
                 acc += len(idx)
         return output
-    
+
     def return_all_cells(self):
         all_cells = []
         for s in self.F['cells']:
@@ -110,7 +110,7 @@ class QueueGenerator:
         return x
 
 class GenerateFromDataset:
-    def __init__(self,path,maxsize=1,min_cells=None,feature_subset=None):
+    def __init__(self,path,maxsize=1,min_cells=None,feature_subset=None,auto=True):
         self.maxsize = maxsize
         self.min_cells = min_cells
         self.mean = None
@@ -121,7 +121,8 @@ class GenerateFromDataset:
         self.read_all_datasets()
         self.n_datasets = len(self.keys)
         self.n_features = self.all_datasets[self.keys[0]].n_features
-        self.get_moments()
+        if auto == True:
+            self.get_moments()
 
     def __getitem__(self,idx):
         return self.all_datasets[idx]
@@ -151,6 +152,15 @@ class GenerateFromDataset:
             output /= self.std
         if normalize_range == True:
             output = (output-self.minimum)/(self.maximum-self.minimum)
+        return output
+
+    def generate_n_cells_flat(self,S,n_cells):
+        n_datasets = len(S)
+        output = []
+        for d in range(n_datasets):
+            x = self.all_datasets[S[d]].return_n_cells(n_cells)
+            output.append(x)
+        output = np.concatenate(output,axis=0)
         return output
 
     def get_n_cells(self,S):

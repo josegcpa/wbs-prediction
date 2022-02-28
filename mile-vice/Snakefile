@@ -17,6 +17,9 @@ if 'subset' in TYPE:
     subset_flag = "--subset"
 else:
     subset_flag = ""
+DROPOUT = 0
+if "dropout" in config:
+    DROPOUT = config["dropout"]
 
 with open("excluded_ids") as o:
     excluded_ids = o.read().strip()
@@ -234,7 +237,8 @@ rule train_cells_bc:
         nfolds=NFOLDS,
         wd=WD,
         log_id=CV+"_{dataset}.0.001.{nvc,[0-9]+}.bc",
-        n_cells=N_CELLS
+        n_cells=N_CELLS,
+        dropout=DROPOUT
 
     output:
         log="logs/"+CV+"_{dataset}.0.001.{nvc,[0-9]+}.bc",
@@ -258,7 +262,8 @@ rule train_cells_bc:
             --model_path {output.model} \
             --excluded_ids {params.excluded_ids} \
             --median_impute \
-            --min_cells 50 > {output.log}
+            --min_cells 50 \
+            --dropout_rate {params.dropout} > {output.log}
         """
 
 rule train_cells:
@@ -275,12 +280,13 @@ rule train_cells:
         nfolds=NFOLDS,
         wd=WD,
         log_id=CV+"_{dataset}.0.001.{nvc,[0-9]+}",
-        n_cells=N_CELLS
+        n_cells=N_CELLS,
+        dropout=DROPOUT
 
     output:
         log="logs/"+CV+"_{dataset}.0.001.{nvc,[0-9]+}",
         model="models/"+CV+".{dataset}.{nvc}"
-    
+
     shell:
         """
         python3 scripts/train_stack.py \
@@ -298,7 +304,8 @@ rule train_cells:
             --model_path {output.model} \
             --excluded_ids {params.excluded_ids} \
             --median_impute \
-            --min_cells 50 > {output.log}
+            --min_cells 50 \
+            --dropout_rate {params.dropout} > {output.log}
         """
 
 rule train_cells_multi_objective_bc:
@@ -323,7 +330,8 @@ rule train_cells_multi_objective_bc:
         nfolds=NFOLDS,
         wd=WD,
         log_id=CV+"_multi_objective.0.001.{nvc,[0-9]+}.bc",
-        n_cells=N_CELLS
+        n_cells=N_CELLS,
+        dropout=DROPOUT
 
     shell:
         """
@@ -346,7 +354,8 @@ rule train_cells_multi_objective_bc:
             --model_path {output.model} \
             --excluded_ids {params.excluded_ids} \
             --median_impute \
-            --min_cells 50 > {output.log}
+            --min_cells 50 \
+            --dropout_rate {params.dropout} > {output.log}
         """
 
 rule train_cells_multi_objective:
@@ -370,7 +379,8 @@ rule train_cells_multi_objective:
         nfolds=NFOLDS,
         wd=WD,
         log_id=CV+"_multi_objective.0.001.{nvc,[0-9]+}",
-        n_cells=N_CELLS
+        n_cells=N_CELLS,
+        dropout=DROPOUT
 
     shell:
         """
@@ -392,7 +402,8 @@ rule train_cells_multi_objective:
             --model_path {output.model} \
             --excluded_ids {params.excluded_ids} \
             --median_impute \
-            --min_cells 50 > {output.log}
+            --min_cells 50 \
+            --dropout_rate {params.dropout} > {output.log}
         """
 
 rule train_cells_multi_class_bc:
@@ -410,7 +421,8 @@ rule train_cells_multi_class_bc:
         nfolds=NFOLDS,
         wd=WD,
         log_id=CV+"_multi_class.0.001.{nvc,[0-9]+}.bc",
-        n_cells=N_CELLS
+        n_cells=N_CELLS,
+        dropout=DROPOUT
 
     output:
         log="logs/"+CV+"_multi_class.0.001.{nvc,[0-9]+}.bc",
@@ -434,7 +446,8 @@ rule train_cells_multi_class_bc:
             --model_path {output.model} \
             --excluded_ids {params.excluded_ids} \
             --median_impute \
-            --min_cells 50 > {output.log}
+            --min_cells 50 \
+            --dropout_rate {params.dropout} > {output.log}
         """
 
 rule train_cells_multi_class:
@@ -451,7 +464,8 @@ rule train_cells_multi_class:
         nfolds=NFOLDS,
         wd=WD,
         log_id=CV+"_multi_class.0.001.{nvc,[0-9]+}",
-        n_cells=N_CELLS
+        n_cells=N_CELLS,
+        dropout=DROPOUT
 
     output:
         log="logs/"+CV+"_multi_class.0.001.{nvc,[0-9]+}",
@@ -474,5 +488,6 @@ rule train_cells_multi_class:
             --model_path {output.model} \
             --excluded_ids {params.excluded_ids} \
             --median_impute \
-            --min_cells 50 > {output.log}
+            --min_cells 50 \
+            --dropout_rate {params.dropout} > {output.log}
         """

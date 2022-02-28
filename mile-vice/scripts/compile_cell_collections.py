@@ -4,6 +4,7 @@ import os
 import argparse
 import numpy as np
 import re
+from tqdm import tqdm
 
 if __name__ == "__main__":
     print("Reading cmd line arguments...")
@@ -36,9 +37,13 @@ if __name__ == "__main__":
 
     output = h5py.File(args.output_path,'w')
     i = 0
-    for h5 in all_h5:
+    for h5 in tqdm(all_h5):
         F_ = h5py.File(h5,'r')
-        F = F_['cells']
+        k = list(F_.keys())
+        if 'cells' in k:
+            F = F_['cells']
+        else:
+            F = F_
         all_keys = list(F.keys())
         S = np.minimum(len(all_keys),args.n)
         k_subset = np.random.choice(all_keys,S,replace=False)

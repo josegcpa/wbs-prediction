@@ -28,6 +28,8 @@ if __name__ == "__main__":
                         action='store',type=int,default=64)
     parser.add_argument('--dataset_id',dest='dataset_id',
                         action='store',type=str,default=None)
+    parser.add_argument('--pattern',dest='pattern',
+                        action='store',type=str,default="*")
     args = parser.parse_args()
 
     try: os.makedirs("virtual_cell_examples")
@@ -37,7 +39,7 @@ if __name__ == "__main__":
     except: pass
 
     all_cell_collection_paths = glob(
-        os.path.join('cell-collections',args.dataset_id,"*h5"))
+        os.path.join('cell-collections',args.dataset_id,args.pattern+"h5"))
 
     for cell_collection_path in all_cell_collection_paths:
         print("Current cell collection: {}".format(cell_collection_path))

@@ -102,4 +102,5 @@ if __name__ == "__main__":
         for i in range(len(final_layers)):
             prediction = stacked_network([all_cell_sets,other_datasets],i)
             prediction = prediction.detach().cpu().numpy().squeeze()[1]
-            print('{},{},{}'.format(key,labels_path,str(prediction)))
+            print('{},{},{},{}'.format(key,i,labels_path,str(prediction)))
+

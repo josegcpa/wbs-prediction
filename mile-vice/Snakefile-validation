@@ -1,0 +1,195 @@
+import os
+from glob import glob
+
+for d in ["ev-scores","ev-scores-consensus","cell-comparisons"]:
+    try: os.makedirs(d)
+    except: pass
+
+values = {'threshold':0.75,'n_cells':250}
+for k in values:
+    if k in config:
+        values[k] = config[k]
+
+def has_bc(wcs):
+    if '.bc' in wcs.model_path:
+        return "--other_dataset_path datasets/blood_count_data_adden_2.csv"
+    else:
+        return ""
+
+model_ids = ['subset','subset_dropout']
+labels = ['anemia_binary','binary','mds_binary','disease_binary']
+layer_matching = {x:i for i,x in enumerate(labels)}
+so_output = []
+mo_output = []
+fold_matching = {}
+cell_comparison_matching = {}
+for prefix in ['','mo_']:
+    for suffix in ['','.bc']:
+        for label in labels:
+            cell_comparison_matching[prefix+label+suffix] = []
+
+for model_id in model_ids:
+    model_file = 'best_models_' + model_id
+    with open(os.path.join("best_models",model_file)) as o:
+        for line in o:
+            line = line.strip()
+            model_path,fold_idx,label_path = line.split(',')
+            model_path = os.path.split(model_path)[-1]
+            label_path = os.path.split(label_path)[-1]
+            out = 'ev-scores/{}.{}'.format(model_path,label_path)
+            consensus_out = 'ev-scores-consensus/{}.{}'.format(model_path,label_path)
+            so_output.append(out)
+            so_output.append(consensus_out)
+            fold_matching[model_path] = fold_idx
+            bc = '.bc' if 'bc' in model_path else ''
+            task = model_path.split('.')[1] + bc
+            cell_comparison_matching[task].append([model_path,fold_idx,0])
+
+for model_id in model_ids:
+    model_file = 'best_models_mo_' + model_id
+    with open(os.path.join("best_models",model_file)) as o:
+        for line in o:
+            line = line.strip()
+            model_path,fold_idx,label_path = line.split(',')
+            model_path = os.path.split(model_path)[-1]
+            for i,label_path in enumerate(labels):
+                out = 'ev-scores/mo_{}.{}'.format(model_path,label_path) + ".csv"
+                consensus_out = 'ev-scores-consensus/mo_{}.{}'.format(model_path,label_path) + ".csv"
+                mo_output.append(out)
+                mo_output.append(consensus_out)
+                fold_matching[model_path] = fold_idx
+                bc = '.bc' if 'bc' in model_path else ''
+                task = 'mo_' + label_path + bc
+                cell_comparison_matching[task].append([model_path,fold_idx,i])
+
+comparison_output = [os.path.join('cell-comparisons',x+'.csv') for x in cell_comparison_matching]
+
+rule all:
+    input:
+        so_output,mo_output,comparison_output
+
+rule test_so:
+    input:
+        model = 'models/{model_path}',
+        labels = 'labels_adden/{label_path}.csv'
+    output:
+        'ev-scores/{model_path}.{label_path}.csv'
+    params:
+        fold = lambda wcs: fold_matching[wcs.model_path],
+        bc = has_bc
+
+    shell:
+        """
+        python3 scripts/test_dataset.py \
+            --dataset_path datasets/wbc_adden_2_subset.h5 \
+            --dataset_path datasets/rbc_adden_2_subset.h5 \
+            --model_path {input.model} \
+            --fold {params.fold} \
+            --labels_path {input.labels} {params.bc} \
+            --excluded_ids $(cat excluded_ids) > {output}
+        """
+
+rule test_so_consensus:
+    input:
+        model = 'models/{model_path}',
+        labels = 'labels_adden/{label_path}.csv'
+    output:
+        'ev-scores-consensus/{model_path}.{label_path}.csv'
+    params:
+        fold = lambda wcs: fold_matching[wcs.model_path],
+        bc = has_bc,
+        threshold = values['threshold'],
+        n_cells = values['n_cells']
+
+    shell:
+        """
+        python3 scripts/test_dataset_consensus.py \
+            --dataset_path datasets/wbc_adden_2_subset.h5 \
+            --dataset_path datasets/rbc_adden_2_subset.h5 \
+            --training_dataset_path datasets/wbc_subset.h5 \
+            --training_dataset_path datasets/rbc_subset.h5 \
+            --model_path {input.model} \
+            --fold {params.fold} \
+            --labels_path {input.labels} {params.bc} \
+            --excluded_ids $(cat excluded_ids) \
+            --threshold {params.threshold} \
+            --n_cells_consensus {params.n_cells} > {output}
+        """
+
+rule test_mo:
+    input:
+        model = 'models/{model_path}',
+        labels = 'labels_adden/{label_path}.csv'
+    output:
+        'ev-scores/mo_{model_path}.{label_path}.csv'
+    params:
+        fold = lambda wcs: fold_matching[wcs.model_path],
+        layer = lambda wcs: layer_matching[wcs.label_path],
+        bc = has_bc
+
+    shell:
+        """
+        python3 scripts/test_dataset.py \
+            --dataset_path datasets/wbc_adden_2_subset.h5 \
+            --dataset_path datasets/rbc_adden_2_subset.h5 \
+            --model_path {input.model} \
+            --fold {params.fold} \
+            --labels_path {input.labels} {params.bc} --ob {params.layer}\
+            --excluded_ids $(cat excluded_ids) > {output}
+        """
+
+rule test_mo_consensus:
+    input:
+        model = 'models/{model_path}',
+        labels = 'labels_adden/{label_path}.csv'
+    output:
+        'ev-scores-consensus/mo_{model_path}.{label_path}.csv'
+    params:
+        fold = lambda wcs: fold_matching[wcs.model_path],
+        layer = lambda wcs: layer_matching[wcs.label_path],
+        bc = has_bc,
+        threshold = values['threshold'],
+        n_cells = values['n_cells']
+
+    shell:
+        """
+        python3 scripts/test_dataset_consensus.py \
+            --dataset_path datasets/wbc_adden_2_subset.h5 \
+            --dataset_path datasets/rbc_adden_2_subset.h5 \
+            --training_dataset_path datasets/wbc_subset.h5 \
+            --training_dataset_path datasets/rbc_subset.h5 \
+            --model_path {input.model} \
+            --fold {params.fold} \
+            --labels_path {input.labels} {params.bc} --ob {params.layer} \
+            --excluded_ids $(cat excluded_ids) \
+            --threshold {params.threshold} \
+            --n_cells_consensus {params.n_cells} > {output}
+        """
+
+rule compare_cells:
+    input:
+        dataset_1=lambda wcs: os.path.join('models',
+            cell_comparison_matching[wcs.task_str][0][0]),
+        dataset_2=lambda wcs: os.path.join('models',
+            cell_comparison_matching[wcs.task_str][1][0])
+    output:
+        'cell-comparisons/{task_str}.csv'
+    params:
+        fold_1=lambda wcs: cell_comparison_matching[wcs.task_str][0][1],
+        fold_2=lambda wcs: cell_comparison_matching[wcs.task_str][1][1],
+        obj=lambda wcs: cell_comparison_matching[wcs.task_str][0][2],
+        threshold = values['threshold'],
+        n_cells = values['n_cells']
+
+    shell:
+        """
+        python3 scripts/compare_cells.py \
+            --dataset_path datasets/wbc_subset.h5 \
+            --dataset_path datasets/rbc_subset.h5 \
+            --model_path_1 {input.dataset_1} --fold_1 {params.fold_1} \
+            --model_path_2 {input.dataset_2} --fold_2 {params.fold_2} \
+            --ob {params.obj} \
+            --excluded_ids $(echo excluded_ids) \
+            --threshold {params.threshold} \
+            --n_cells_consensus {params.n_cells} > {output}
+        """
