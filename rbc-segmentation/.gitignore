@@ -1,8 +1,0 @@
-test_set.pkl
-xgb_model
-scaler
-scaler_params
-__pycache__
-train_set.pkl
-.ipynb_checkpoints
-

@@ -21,7 +21,7 @@ if gpus:
     print(e)
 
 from image_generator import ImageGeneratorWithQueue
-from fan_unet_utilities import *
+from unet_utilities import *
 import MIA
 MIA_FEATURES = MIA.MIA_FEATURES
 
@@ -38,7 +38,6 @@ class BCProcess:
         self.Centers = {}
 
     def generate(self,q):
-        self.init_hdf5()
         C = True
         while C == True:
             element = q.get()
@@ -142,7 +141,7 @@ class ProcessingQueue:
     def start(self):
         self.p.daemon = True
         self.p.start()
-    
+
     def join(self):
         self.p.join()
 
@@ -299,10 +298,6 @@ parser.add_argument('--csv_path',dest='csv_path',
 parser.add_argument('--slide_path',dest='slide_path',
                     action='store',
                     default=None)
-parser.add_argument('--fan_checkpoint_path',dest='fan_checkpoint_path',
-                    action='store',
-                    default=None,
-                    help='Path to FAN checkpoint.')
 parser.add_argument('--unet_checkpoint_path',dest='unet_checkpoint_path',
                     action='store',
                     default=None,
@@ -312,11 +307,6 @@ parser.add_argument('--depth_mult',dest='depth_mult',
                     type=float,
                     default=1.0,
                     help='Depth of the U-Net.')
-parser.add_argument('--n_features',dest='n_features',
-                    action='store',
-                    type=int,
-                    default=32,
-                    help='Number of features in the FAN.')
 parser.add_argument('--wbc_output_path',dest='wbc_output_path',
                     action='store',
                     default=None,
@@ -330,35 +320,16 @@ parser.add_argument('--rescale_factor',dest='rescale_factor',
                     type=float,
                     default=1,
                     help='Factor to resize cells (due to different mpp).')
-parser.add_argument('--fan_adjustment_min',dest='fan_adjustment_min',
-                    action='store',type=float,default=0.,
-                    help='Recaling constant for FAN output (min)')
-parser.add_argument('--fan_adjustment_max',dest='fan_adjustment_max',
-                    action='store',type=float,default=1.,
-                    help='Recaling constant for FAN output (max)')
 
 args = parser.parse_args()
 
 h,w,extra = 512,512,128
 new_h,new_w = h+extra,w+extra
 
-fan_adjustment = [args.fan_adjustment_min,args.fan_adjustment_max]
-
 igwq = ImageGeneratorWithQueue(args.slide_path,args.csv_path,
                                extra_padding=extra//2,
                                maxsize=25)
 igwq.start()
-
-# instantiate FAN and load it
-mobilenet_v2 = keras.applications.MobileNetV2(
-    include_top=False,weights=None)
-sub_model = keras.Model(
-    inputs=mobilenet_v2.input,
-    outputs=[mobilenet_v2.get_layer(x).output for x in output_layer_ids])
-fan_model = FAN(sub_model,args.n_features,new_h,new_w,
-                batch_size=2,upscaling='transpose')
-fan_model.load_weights(args.fan_checkpoint_path)
-fan_model.trainable = False
 
 # instantiate U-Net and load it
 u_net = UNet(depth_mult=args.depth_mult,padding='SAME',
@@ -366,20 +337,11 @@ u_net = UNet(depth_mult=args.depth_mult,padding='SAME',
              dropout_rate=0,squeeze_and_excite=False)
 u_net.load_weights(args.unet_checkpoint_path)
 u_net.trainable = False
-
-fan_u_net = FANUNet(fan_model,u_net)
-fan_u_net.unet_model.make_predict_function()
-fan_u_net.fan_model.make_predict_function()
+u_net.make_predict_function()
 
 wbc_process = WBCProcess(args.wbc_output_path,h,w,extra)
-#wbc_process_queue = ProcessingQueue(wbc_process.generate)
-#wbc_process_queue.start()
-
-rbc_process = RBCProcess(args.rbc_output_path,h,w,extra)
-#rbc_process_queue = ProcessingQueue(rbc_process.generate)
-#rbc_process_queue.start()
-
 wbc_process.init_hdf5()
+rbc_process = RBCProcess(args.rbc_output_path,h,w,extra)
 rbc_process.init_hdf5()
 
 def generator():
@@ -398,20 +360,14 @@ tf_dataset = tf_dataset.prefetch(36)
 
 for image,coords in tqdm(tf_dataset):
     coords = list(coords.numpy())
-    normalised_input = fan_u_net.fan_model(image)
+    normalised_input = image
     for n_i,c in zip(normalised_input,coords):
-        n_i = (n_i-fan_adjustment[0])/ (fan_adjustment[1]-fan_adjustment[0])
+        masked_wbc = mask_wbc(n_i,u_net,tta=True)
         n_i_p = n_i.numpy()
-        n_i_p = np.clip(n_i_p,0,1)
         n_i_p = np.uint8(n_i_p*255)
-        #rbc_process_queue.add_to_queue([n_i_p,args.rescale_factor,c])
 
-        masked_wbc = mask_wbc(n_i,fan_u_net.unet_model,tta=True)
-        #wbc_process_queue.add_to_queue([n_i_p,masked_wbc,args.rescale_factor,c])
         wbc_process.process_element([n_i_p,masked_wbc,args.rescale_factor,c])
         rbc_process.process_element([n_i_p,args.rescale_factor,c])
 
-#wbc_process_queue.join()
-#rbc_process_queue.join()
 wbc_process.close_hdf5()
 rbc_process.close_hdf5()

@@ -1,6 +1,5 @@
 DATASET=${1:-MLL}
-FAN=${2:-yes}
-GPU=${3:-yes}
+GPU=${2:-yes}
 
 source ./config
 
@@ -27,36 +26,54 @@ else
     exit 1
 fi
 
-if [[ $FAN == "yes" ]]
-then
-    PIPELINE_SCRIPT=pipeline-fan.sh
-    UNET_CKPT=$UNET_CKPT_FAN
-elif [[ $FAN == "no" ]]
-then
-    PIPELINE_SCRIPT=pipeline.sh
-else
-    echo "second argument $FAN should be either yes or no"
-fi
+PIPELINE_SCRIPT=pipeline.sh
 
 for slide_path in $DIR/*$FMT
 do
+    EXEC_STR="$PIPELINE_SCRIPT -i $slide_path -o $OUT -q $QC_CKPT -x $XGB_PATH -u $UNET_CKPT -r $RS"
     R=$(basename $slide_path)
     if [[ $GPU == "yes" ]]
     then
-        echo bsub \
+        bsub \
             -o logs/$R.o -e logs/$R.e \
-            -M 16000 -P gpu \
+            -M 8000 -q gpu \
             -gpu "num=1:j_exclusive=yes" \
             -E 'if [[ $(nvidia-smi | grep "No runnin" | wc -l) == 1 ]]; then X=0; else X=1; fi; echo $X' \
             -J SLIDE_$R \
+            -g /SLIDE/GPU \
             -W 24:00 \
-            sh $PIPELINE_SCRIPT $slide_path $OUT $QC_CKPT $FAN_CKPT $UNET_CKPT $DATASET $RS "${@:4}"
-    else
-        echo bsub \
+            sh $EXEC_STR "${@:3}"
+    elif [[ $GPU == "smart" ]]
+    then
+        slide_id=$(basename $slide_path | cut -d '.' -f 1)
+        if [[ -f $OUT/_checkpoints/"$slide_id"_seg ]]
+        then
+            bsub \
+                -o logs/$R.o -e logs/$R.e \
+                -M 8000 -n 8 \
+                -J SLIDE_$R \
+                -g /SLIDE/CPU \
+                -W 24:00 \
+                sh $EXEC_STR "${@:3}"
+        else
+            bsub \
+                -o logs/$R.o -e logs/$R.e \
+                -M 8000 -q gpu \
+                -gpu "num=1:j_exclusive=yes" \
+                -E 'if [[ $(nvidia-smi | grep "No runnin" | wc -l) == 1 ]]; then X=0; else X=1; fi; echo $X' \
+                -J SLIDE_$R \
+                -g /SLIDE/GPU \
+                -W 24:00 \
+                sh $EXEC_STR "${@:3}"
+        fi
+    elif [[ $GPU == "no" ]]
+    then
+        bsub \
             -o logs/$R.o -e logs/$R.e \
-            -M 16000 -n 8 \
+            -M 8000 -n 8 \
             -J SLIDE_$R \
+            -g /SLIDE/CPU \
             -W 24:00 \
-            sh $PIPELINE_SCRIPT $slide_path $OUT $QC_CKPT $FAN_CKPT $UNET_CKPT $DATASET $RS "${@:4}"
+            sh $EXEC_STR "${@:3}"
     fi
 done

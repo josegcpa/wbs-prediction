@@ -7,6 +7,7 @@ import h5py
 import xgboost
 import pickle
 import cv2
+import openslide
 from multiprocessing import Pool
 from skimage.transform import rescale
 from sklearn.preprocessing import StandardScaler
@@ -54,6 +55,7 @@ class FeatureExtractor:
         mask = rescale(mask,self.rescale_factor,
                         anti_aliasing=True,order=0,
                         preserve_range=True,clip=False)
+        mask = np.uint8(np.round(mask))
         contours,_ = cv2.findContours(mask,2,1)
         cnt = contours[-1]
         return image,mask,cnt
@@ -92,18 +94,18 @@ class FeatureExtractor:
         return output
 
 parser = argparse.ArgumentParser(
-    prog = 'aggregate_hdf5.py',
+    prog = 'characterise_cells.py',
     description = 'creates dataset and summary statistics for hdf5 file')
 
+parser.add_argument('--slide_path',dest='slide_path',
+                    action='store',default=None,
+                    help="Path to whole blood slide")
 parser.add_argument('--segmented_cells_path',dest='segmented_cells_path',
                     action='store',default=None,
-                    help='Path to hdf5 file containing segmented cells.')
+                    help='Path to hdf5 file containing segmented cells')
 parser.add_argument('--cell_type',dest='cell_type',
                     action='store',default='WBC',
                     help='WBC or RBC')
-parser.add_argument('--wbc_method',dest='wbc_method',
-                    action='store',default='traditional',
-                    help='traditional or deep')
 parser.add_argument('--output_path',dest='output_path',
                     default=None,action='store',
                     help='Output path for the hdf5 file.')
@@ -122,9 +124,17 @@ parser.add_argument('--xgboost_model',dest='xgboost_model',
 
 args = parser.parse_args()
 args.cell_type = args.cell_type.lower()
-args.wbc_method = args.wbc_method.lower()
 
 feature_extractor = FeatureExtractor(args.rescale_factor,args.cell_type)
+OS = openslide.OpenSlide(args.slide_path)
+
+def fn(X,Y,cnt):
+    x,y = np.min(X)-5,np.min(Y)-5
+    h,w = np.max(X)-x+10,np.max(Y)-y+10
+    image = np.array(OS.read_region((x,y),0,(h,w)))
+    mask = np.zeros([w,h],dtype=np.uint8)
+    mask[Y-y,X-x] = 1
+    return feature_extractor.extract_features(image,mask,cnt)
 
 pool = Pool(args.n_processes)
 
@@ -140,14 +150,21 @@ cell_idx = 0
 with h5py.File(args.segmented_cells_path,'r') as F:
     all_keys = list(F.keys())
     for k in tqdm(all_keys):
-        image = F[k]['image'][()]
-        mask = F[k]['mask'][()]
+        X = F[k]['X'][()]
+        Y = F[k]['Y'][()]
         cnt = F[k]['cnt'][()]
-        image_sets.append([image,mask,cnt])
+        # x,y = np.min(X)-5,np.min(Y)-5
+        # h,w = np.max(X)-x+10,np.max(Y)-y+10
+
+        # image = np.array(OS.read_region((x,y),0,(h,w)))
+        # mask = np.zeros([w,h],dtype=np.uint8)
+        # mask[Y-y,X-x] = 1
+        # image_sets.append([image,mask,cnt])
+        image_sets.append([X,Y,cnt])
         k_sets.append(k)
         if len(image_sets) == args.n_processes:
-            output = pool.starmap(
-                feature_extractor.extract_features,image_sets)
+            # output = pool.starmap(feature_extractor.extract_features,image_sets)
+            output = pool.starmap(fn,image_sets)
             for element,k in zip(output,k_sets):
                 if element is not None:
                     cell_center = k[1:-1].split(',')
@@ -166,7 +183,7 @@ with h5py.File(args.segmented_cells_path,'r') as F:
                 cell_idx += 1
             image_sets = []
             k_sets = []
-            
+
 if len(image_sets) > 0:
     output = pool.starmap(
         feature_extractor.extract_features,image_sets)
@@ -214,3 +231,4 @@ with h5py.File(args.output_path,'w') as F_out:
     F_out['variances'] = np.var(all_features,axis=0)
     F_out['cell_centers'] = np.array(cell_centers,dtype="S")
     F_out['cell_center_idxs'] = all_ks
+
