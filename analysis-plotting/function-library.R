@@ -34,7 +34,7 @@ fine_class_conversion <- c(
   `Megaloblastic anemia` = "Megaloblastic"
 )
 
-fine_simple_levels = c("Normal","SF3B1-mutant","Non-SF3B1-mutant",
+fine_simple_levels = c("Normal","SF3B1-mutant","SF3B1-wildtype",
                        "Iron deficiency","Megaloblastic")
 fine_colours <- c(
   "grey50",
@@ -42,7 +42,7 @@ fine_colours <- c(
   "#fc5f64","#BB0021FF")
 names(fine_colours) <- fine_class_conversion
 fine_colours <- c(MDS = "green4",Anaemia = "red4",
-                  `Non-SF3B1-mutant` = "darkorchid",
+                  `SF3B1-wildtype` = "darkorchid",
                   fine_colours,Disease = "pink2")
   
 features_all <- c(

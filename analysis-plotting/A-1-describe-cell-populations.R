@@ -183,8 +183,8 @@ merge(select(rbc_counts,slide_id,dataset,rbc = counts),
         legend.title = element_blank()) + 
   ggsave("figures/no-of-cells-scatter.pdf",height = 1.5,width = 2.5) 
 
-quantile(wbc_counts$counts,c(0,0.25,0.5,0.75,1))
-quantile(rbc_counts$counts,c(0,0.25,0.5,0.75,1))
+c(mean=mean(wbc_counts$counts),quantile(wbc_counts$counts,c(0,0.25,0.5,0.75,1)))
+c(mean=mean(rbc_counts$counts),quantile(rbc_counts$counts,c(0,0.25,0.5,0.75,1)))
 
 # density to feature ------------------------------------------------------
 

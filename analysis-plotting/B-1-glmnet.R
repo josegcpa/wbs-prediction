@@ -10,7 +10,7 @@ library(ggpubr)
 library(caret)
 library(glmnet)
 library(pROC)
-library(RRF)
+#library(RRF)
 library(MLmetrics)
 library(RANN)
 
@@ -964,6 +964,9 @@ all_roc_multiclass_df %>%
 feature_colours <- c(RBC = "red4",`RBC means` = "red4",`RBC variances` = "red1",
                      WBC = "purple4",`WBC means` = "purple4",`WBC variances` = "purple1",
                      `B.C.` = "green4")
+feature_colours_group <- c(`RBC means` = "red4",`RBC variances` = "red1",
+                           `WBC means` = "purple4",`WBC variances` = "purple1",
+                           `B.C.` = "green4")
 feature_shapes <- c(Mean = 16,Variance = 17,X = 15)
   
 cat("\nconsistency within glmnet models\n")
@@ -1289,8 +1292,8 @@ var_group_importance %>%
   mutate(Proportions = value / sum(value)) %>%
   mutate(S = sum(value)^(1/6)) %>%
   mutate(key = factor(key,
-                      levels = c("WBCMeans","WBCVars","RBCMeans","RBCVars","BCDem"),
-                      labels = c("WBC means","WBC variances","RBC means","RBC variances",
+                      levels = c("WBCMeans","RBCMeans","WBCVars","RBCVars","BCDem"),
+                      labels = c("WBC means","RBC means","WBC variances","RBC variances",
                                  "B.C."))) %>% 
   mutate(task = factor(task,
                        levels = c("disease_detection","disease_classification",
@@ -1302,7 +1305,7 @@ var_group_importance %>%
   coord_polar(theta = "y") + 
   facet_wrap(~ task) + 
   theme_pretty(base_size = 6) +
-  scale_fill_manual(values = feature_colours,name = NULL) +
+  scale_fill_manual(values = feature_colours_group,name = NULL) +
   theme(panel.grid = element_blank(),axis.title = element_blank(),
         axis.line = element_blank(),axis.text = element_blank(),
         axis.ticks = element_blank(),legend.position = "bottom",

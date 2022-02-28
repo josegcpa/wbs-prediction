@@ -306,20 +306,19 @@ plot_grid(
     mutate(fine_class = conversion_list[[decode_model_name(model_name)]][fine_class]) %>%
     group_by(model_name,fine_class) %>%
     summarise(long_kde2d(`1`,`2`,bw,100,L)) %>%
-    subset(z >= 0.01) %>%
+    subset(z >= 0.02) %>%
     group_by(model_name,x,y) %>%
     summarise(P = max(z)/sum(sort(z,decreasing = T)[2:length(z)]),
               cl = fine_class[which.max(z)]) %>%
     mutate(cl = factor(cl,levels = fine_class_order)) %>% 
-    ggplot(aes(x = x,y = y,fill = cl,
-               alpha = P)) +
+    ggplot(aes(x = x,y = y,fill = cl,alpha = P)) +
     geom_tile() + 
     scale_fill_manual(values = fine_colours,name = "Predominant class") + 
     facet_wrap(~ decode_model_name(model_name),nrow = 1) + 
     theme_pretty(base_size = 6) + 
     theme(axis.text = element_blank(),legend.position = "bottom",
           legend.key.size = unit(0.2,"cm")) + 
-    scale_alpha(name = "density ratio",trans = 'log10',range = c(1e-8,1)) +
+    scale_alpha(name = "density ratio",range = c(1e-8,1)) +
     xlab("UMAP1") +
     ylab("UMAP2") + 
     scale_x_continuous(limits = L[1:2]) + 
