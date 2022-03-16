@@ -252,13 +252,9 @@ vcq_layers_mo <- paste(Filter(
 wbc_subset_path <- NULL
 rbc_subset_path <- NULL
 if (grepl("subset",output_str)){
-  wbc_subset_path <- "../mile-vice/scripts/wbc_feature_subset"
-  rbc_subset_path <- "../mile-vice/scripts/rbc_feature_subset"
+  wbc_subset_path <- "data_output/wbc_feature_subset"
+  rbc_subset_path <- "data_output/rbc_feature_subset"
 } 
-if (grepl("unbiased",output_str)) {
-  wbc_subset_path <- "../mile-vice/scripts/wbc_feature_subset_unbiased"
-  rbc_subset_path <- "../mile-vice/scripts/rbc_feature_subset_unbiased"
-}
 
 feat_conv <- rev(gsub('\n',' ',features_conversion))
 

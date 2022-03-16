@@ -9,6 +9,22 @@ try:
 except:
     pass
 
+dataset_folders = [
+    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_wbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_rbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_wbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_rbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_wbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_rbc']
+
+dataset_output_root = [
+    'datasets/wbc',
+    'datasets/rbc',
+    'datasets/wbc_adden_1',
+    'datasets/rbc_adden_1',
+    'datasets/wbc_adden_2',
+    'datasets/rbc_adden_2']
+
 def generate_min_max(input_path):
     print("Calculating min and max for {}".format(input_path))
     m = []
@@ -57,21 +73,6 @@ def generate_dataset(input_path,output_path,
                 )
 
 N = 100
-dataset_folders = [
-    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_rbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_rbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_rbc']
-
-dataset_output_root = [
-    'datasets/wbc',
-    'datasets/rbc',
-    'datasets/wbc_adden_1',
-    'datasets/rbc_adden_1',
-    'datasets/wbc_adden_2',
-    'datasets/rbc_adden_2']
 
 m_wbc,M_wbc = generate_min_max(dataset_folders[0])
 m_rbc,M_rbc = generate_min_max(dataset_folders[1])

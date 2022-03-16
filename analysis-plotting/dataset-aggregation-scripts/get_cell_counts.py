@@ -9,6 +9,22 @@ try:
 except:
     pass
 
+dataset_folders = [
+    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_wbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_rbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_wbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_rbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_wbc',
+    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_rbc']
+
+dataset_output_root = [
+    'datasets/wbc',
+    'datasets/rbc',
+    'datasets/wbc_adden_1',
+    'datasets/rbc_adden_1',
+    'datasets/wbc_adden_2',
+    'datasets/rbc_adden_2']
+
 def generate_dataset(input_path,output_path,
                     m=None,M=None,N=100):
     with open(output_path,'w') as o:
@@ -30,22 +46,6 @@ def generate_dataset(input_path,output_path,
                 n_cells += y.shape[0]
 
             o.write('{},{}\n'.format(name,n_cells))
-
-dataset_folders = [
-    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_rbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_rbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_rbc']
-
-dataset_output_root = [
-    'datasets/wbc',
-    'datasets/rbc',
-    'datasets/wbc_adden_1',
-    'datasets/rbc_adden_1',
-    'datasets/wbc_adden_2',
-    'datasets/rbc_adden_2']
 
 dataset_output = [x + '_counts.csv' for x in dataset_output_root]
 

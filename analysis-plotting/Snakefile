@@ -21,7 +21,7 @@ model_specific_scripts = [
     "C-4-analyse-metrics-validation.R"
 ]
 
-model_ids = ['full','full_dropout','subset','subset_dropout']
+model_ids = ['subset']
 
 ckpts = [os.path.join('checkpoints',x + '.ckpt') for x in normal_scripts]
 ckpts.append(os.path.join('checkpoints','C-3-annotated-cell-prediction-analysis.R'+'.ckpt'))

@@ -10,6 +10,11 @@ except: pass
 
 results_folder = '/hps/nobackup/research/gerstung/josegcpa/data/results'
 
+dataset_folders = {
+    'MLL':'/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/',
+    'ADDEN1':'/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/',
+    'ADDEN2':'/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/'}
+
 for dataset_folder in glob('{}/histograms/*'.format(results_folder)):
     dataset_key = dataset_folder.split(os.sep)[-1]
     for histogram_file in tqdm(glob('{}/*csv'.format(dataset_folder))):
@@ -31,11 +36,6 @@ for dataset_folder in glob('{}/blur-maps/*'.format(results_folder)):
                 if 'BLUR' in l[:4]:
                     l = '{},{},{}'.format(slide_id,dataset_key,l)
                     output.write(l)
-
-dataset_folders = {
-    'MLL':'/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/',
-    'ADDEN1':'/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/',
-    'ADDEN2':'/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/'}
 
 output_general = open('datasets/qc_summary.csv','w')
 for dataset_key in dataset_folders:

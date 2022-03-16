@@ -157,15 +157,15 @@ feat_conv <- rev(gsub('\n',' ',features_conversion))
 best_vcq_subset <- rbind(
   read_vcq_layer(
     path = "../mile-vice/best_models/best_vcq_layers_subset",
-    wbc_subset_path = "../mile-vice/scripts/wbc_feature_subset",
-    rbc_subset_path = "../mile-vice/scripts/rbc_feature_subset") %>%
+    wbc_subset_path = "data_output/wbc_feature_subset",
+    rbc_subset_path = "data_output/rbc_feature_subset") %>%
     mutate(virtual_cell_type_fctr = paste(
       decode_model_name(model_name),data_type,cell_type,virtual_cell_type)) %>%
     mutate(feature = factor(feat_conv[feature],levels = feat_conv)),
   read_vcq_layer(
     path = "../mile-vice/best_models/best_vcq_layers_mo_subset",
-    wbc_subset_path = "../mile-vice/scripts/wbc_feature_subset",
-    rbc_subset_path = "../mile-vice/scripts/rbc_feature_subset") %>%
+    wbc_subset_path = "data_output/wbc_feature_subset",
+    rbc_subset_path = "data_output/rbc_feature_subset") %>%
     mutate(virtual_cell_type_fctr = paste(data_type,cell_type,virtual_cell_type)) %>%
     mutate(feature = factor(feat_conv[feature],levels = feat_conv)))
 
@@ -179,7 +179,7 @@ rbc_cells_subset <- rbc_cells[sample(nrow(rbc_cells),size = N_points,replace = F
 colnames(rbc_cells_subset)[1:4] <- c("model_name","slide_id",
                                      "cell_type","virtual_cell_type")
 colnames(rbc_cells_subset)[5:ncol(rbc_cells_subset)] <- features_all[
-  unlist(read.csv("../mile-vice/scripts/rbc_feature_subset",header=F))]
+  unlist(read.csv("data_output/rbc_feature_subset",header=F))]
 rbc_cells_subset$unique_idx <- 1:nrow(rbc_cells_subset)
 rbc_cells_subset_long <- rbc_cells_subset %>%
   mutate(cell_type = toupper(cell_type)) %>%
@@ -233,7 +233,7 @@ wbc_cells_subset <- wbc_cells[sample(nrow(wbc_cells),size = N_points,replace = F
 colnames(wbc_cells_subset)[1:4] <- c("model_name","slide_id","cell_type",
                                      "virtual_cell_type")
 colnames(wbc_cells_subset)[5:ncol(wbc_cells_subset)] <- c(features_all,features_nuclear)[
-  unlist(read.csv("../mile-vice/scripts/wbc_feature_subset",header=F))]
+  unlist(read.csv("data_output/scripts/wbc_feature_subset",header=F))]
 wbc_cells_subset$unique_idx <- 1:nrow(wbc_cells_subset)
 wbc_cells_subset_long <- wbc_cells_subset %>%
   mutate(cell_type = toupper(cell_type)) %>%
