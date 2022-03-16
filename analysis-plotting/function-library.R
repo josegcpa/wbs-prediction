@@ -5,14 +5,19 @@ library(tidyverse)
 library(ggsci)
 
 ggsave <- function(...) {
-  ggplot2::ggsave(...)
+  arg_list <- list(...)
+  if ("device" %in% names(arg_list) | "useDingbats" %in% names(arg_list)) {
+    ggplot2::ggsave(...)
+  } else {
+    ggplot2::ggsave(...,useDingbats=F)
+  }
   invisible()
 }
 
 # constants ---------------------------------------------------------------
 
 poor_quality_slides <- c(
-  "SRSF2_10", # the whole slide is practically blurred
+  "SRSF2_10",
   "II_26","VII_11","VIII_10",
   "VIII_21","X_9","X_11","XV_11",
   "XV_19","XVII_1","XVII_3","XVII_9"
@@ -88,14 +93,14 @@ features_conversion <- c(
   invariant_region_moments_5 = "Inv. region mom. 5",
   invariant_region_moments_6 = "Inv. region mom. 6",
   cdf_fc = "CDF Fourier rec. err.",
-  peak_profile_major_fc = "Major axis peak\nprofile rec. err.",
-  peak_profile_major_std = "Major axis peak\nprofile std.",
-  peak_profile_major_max = "Major axis peak\nprofile max.",
-  peak_profile_major_min = "Major axis peak\nprofile min.",
-  peak_profile_minor_fc = "Minor axis peak\nprofile rec. err.",
-  peak_profile_minor_std = "Minor axis peak\nprofile std.",
-  peak_profile_minor_max = "Minor axis peak\nprofile min.",
-  peak_profile_minor_min = "Minor axis peak\nprofile max.",
+  peak_profile_major_fc = "Major axis pp. rec. err.",
+  peak_profile_major_std = "Major axis pp. std.",
+  peak_profile_major_max = "Major axis pp. max.",
+  peak_profile_major_min = "Major axis pp. min.",
+  peak_profile_minor_fc = "Minor axis pp. rec. err.",
+  peak_profile_minor_std = "Minor axis pp. std.",
+  peak_profile_minor_max = "Minor axis pp. min.",
+  peak_profile_minor_min = "Minor axis pp. max.",
   mass_displacement_red = "Mass displacement (R)",
   mass_displacement_green = "Mass displacement (G)",
   mass_displacement_blue = "Mass displacement (B)",

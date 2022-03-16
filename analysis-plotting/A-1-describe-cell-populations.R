@@ -39,9 +39,9 @@ blood_parameters <- read_csv(
 
 fine_to_not_so_fine <- c(
   `Normal` = "Normal",`SF3B1-mutant` = "SF3B1-mutant MDS",
-  `RUNX1-mutant` = "non-SF3B1-mutant MDS",
-  `SRSF2-mutant` = "non-SF3B1-mutant MDS",
-  `U2AF1-mutant` = "non-SF3B1-mutant MDS",
+  `RUNX1-mutant` = "SF3B1-wildtype",
+  `SRSF2-mutant` = "SF3B1-wildtype",
+  `U2AF1-mutant` = "SF3B1-wildtype",
   `Iron deficiency` = "Iron deficiency anaemia",
   `Megaloblastic` = "Megaloblastic anaemia")
 
@@ -262,7 +262,7 @@ wbc_all_cells_summaries <- read_csv(
   mutate(fine_class = ifelse(coarse_class == "MDS",
                              ifelse(grepl("SF3B1",fine_class),
                                     "SF3B1-mutant",
-                                    "Non-SF3B1-mutant"),
+                                    "SF3B1-wildtype"),
                              as.character(fine_class))) %>%
   mutate(fine_class = factor(
     as.character(fine_class),
@@ -520,7 +520,7 @@ rbc_all_cells_summaries <- read_csv(
   mutate(fine_class = ifelse(coarse_class == "MDS",
                              ifelse(grepl("SF3B1",fine_class),
                                     "SF3B1-mutant",
-                                    "Non-SF3B1-mutant"),
+                                    "SF3B1-wildtype"),
                              as.character(fine_class))) %>%
   mutate(fine_class = factor(
     as.character(fine_class),

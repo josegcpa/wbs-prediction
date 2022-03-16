@@ -2,6 +2,10 @@
 
 source("function-library.R")
 
+args <- commandArgs(trailingOnly=TRUE)
+output_str <- ifelse(length(args)>0,args[1],"full")
+dir.create(paste('figures',output_str,sep = "/"),showWarnings = F)
+
 library(tidyverse)
 library(cowplot)
 library(ggpubr)
@@ -72,9 +76,19 @@ label_conversion <- list(
     `Iron deficiency` = 0,`Megaloblastic` = 1)
 )
 
+path_list <- list(
+  probs = ifelse(
+    output_str == "full",
+    "../mile-vice/metrics/cv_probs.csv",
+    sprintf("../mile-vice/metrics/cv_%s_probs.csv",gsub("full_","",output_str))),
+  metrics = ifelse(
+    output_str == "full",
+    "../mile-vice/metrics/cv_metrics_df.csv",
+    sprintf("../mile-vice/metrics/cv_%s_metrics_df.csv",gsub("full_","",output_str))))
+
 all_metrics <- rbind(
   read_csv(
-    "../mile-vice/metrics/cv_subset_metrics_df.csv",
+    path_list$metrics,
     col_names = c("set","fold","metric","value","nvc","nc",
                   "task_number","task","dataset","feature_set"))) %>%
   mutate(task_original = task) %>%
@@ -89,9 +103,9 @@ all_metrics <- rbind(
 
 probs_class <- rbind(
   read_csv(
-    "../mile-vice/metrics/cv_subset_probs.csv",
+    path_list$probs,
     col_names = c("X","fold","task_idx","prob","class","class_true","task","nvc","data_type","feature_set"))) %>%
-  subset(feature_set == "subset_features")
+  subset(feature_set == ifelse(grepl("full",output_str),"all_features","subset_features"))
 
 probs_class_idx <- probs_class %>%
   select(task_idx,task,data_type,nvc,feature_set) %>%
@@ -109,7 +123,6 @@ for (i in 1:nrow(probs_class_idx)) {
   roc_coords <- get.coords.for.ggplot(full_roc) %>%
     as.tibble %>%
     mutate(data_type = tmp[3])
-  print(tmp)
   all_roc[[l_s]] <- roc_coords
   all_roc[[l_s]]$task_idx <- tmp[1]
   all_roc[[l_s]]$task <- tmp[2]
@@ -147,7 +160,7 @@ all_roc_df %>%
   geom_bar(position = position_dodge(width = 0.95),
            stat = "identity",size = 0.25) +
   theme_pretty(base_size = 6) +
-  coord_flip(ylim = c(0.85,1)) +
+  coord_flip(ylim = c(0.8,1)) +
   scale_fill_manual(values = colorRampPalette(colors = c("gold","red4"))(length(unique(all_metrics$nvc))),
                     name = NULL) + 
   theme(legend.position = "bottom",
@@ -156,7 +169,8 @@ all_roc_df %>%
   ylab("AUC") + 
   scale_y_continuous(expand = c(0.01,0.01)) +
   scale_colour_manual(values = c(NA,"black"),guide = F) +
-  ggsave("figures/mile-vice-cv-performance.pdf",height = 1.8,width = 3)
+  ggsave(
+    sprintf("figures/%s/mile-vice-cv-performance.pdf",output_str),height = 1.8,width = 3)
 
 all_roc_df %>%
   select(nvc,task,multi_objective = mo,value = auc_value,dataset = data_type) %>%
@@ -182,7 +196,8 @@ all_roc_df %>%
   scale_y_discrete(expand = c(0,0)) + 
   scale_colour_manual(values = c("black",NA),guide = F) +
   scale_fill_gradient(low = "lightcyan1",high = "purple",name = "AUC") +
-  ggsave("figures/mile-vice-cv-performance-tile.pdf",height = 1.7,width = 3.5)
+  ggsave(
+    sprintf("figures/%s/mile-vice-cv-performance-tile.pdf",output_str),height = 1.7,width = 3.5)
 
 all_roc_df %>%
   select(nvc,task,multi_objective = mo,value = auc_value,dataset = data_type) %>%
@@ -208,7 +223,8 @@ all_roc_df %>%
   ylab("Median AUC") + 
   xlab("Number of virtual cells") +
   facet_wrap(~ dataset) +
-  ggsave("figures/mile-vice-cv-performance-lines.pdf",height = 1.8,width = 2.5)
+  ggsave(
+    sprintf("figures/%s/mile-vice-cv-performance-lines.pdf",output_str),height = 1.8,width = 2.5)
 
 best_models_so <- all_roc_df %>%
   select(nvc,task,multi_objective = mo,value = auc_value,dataset = data_type) %>%
@@ -222,7 +238,7 @@ best_models_so <- all_roc_df %>%
   as_tibble() %>% 
   arrange(dataset,task)
 
-write.csv(best_models_so,"data_output/best_models_so.csv")
+write.csv(best_models_so,sprintf("data_output/best_models_so_%s.csv",output_str))
 
 best_models_mo <- all_roc_df %>%
   select(nvc,task,multi_objective = mo,value = auc_value,dataset = data_type) %>%
@@ -238,7 +254,7 @@ best_models_mo <- all_roc_df %>%
   filter(nvc == min(as.numeric(as.character(nvc)))) %>% 
   as_tibble()
 
-write.csv(best_models_mo,"data_output/best_models_mo.csv")
+write.csv(best_models_mo,sprintf("data_output/best_models_mo_%s.csv",output_str))
 
 best_models_roc_curves <- list()
 best_models_so_list <- list()
@@ -297,7 +313,8 @@ best_models_roc_curves_df %>%
   coord_cartesian(xlim = c(0,1),ylim = c(0,1)) + 
   scale_x_continuous(expand = c(0.01,0.01)) +
   scale_y_continuous(expand = c(0.01,0.01)) + 
-  ggsave("figures/mile-vice-roc-curve.pdf",height = 2.3,width = 2.3)
+  ggsave(
+    sprintf("figures/%s/mile-vice-roc-curve.pdf",output_str),height = 2.3,width = 2.3)
 
 best_models_roc_curves_df %>%
   arrange(sensitivity,-specificity) %>% 
@@ -315,7 +332,8 @@ best_models_roc_curves_df %>%
   coord_cartesian(xlim = c(0,1),ylim = c(0,1)) + 
   scale_x_continuous(expand = c(0.01,0.01)) +
   scale_y_continuous(expand = c(0.01,0.01)) + 
-  ggsave("figures/mile-vice-roc-curve-mo.pdf",height = 2.3,width = 2.3)
+  ggsave(
+    sprintf("figures/%s/mile-vice-roc-curve-mo.pdf",output_str),height = 2.3,width = 2.3)
 
 # compare with glmnet -----------------------------------------------------
 
@@ -359,7 +377,8 @@ ggplot(glmnet_scores,aes(x = task,y = value,fill = key)) +
   theme(legend.position = "bottom",
         legend.key.size = unit(0.2,"cm"),
         panel.spacing = unit(1.5,"lines")) +
-  ggsave("figures/mile-vice-vs-glmnet.pdf",height = 1.5,width = 4)
+  ggsave(
+    sprintf("figures/%s/mile-vice-vs-glmnet.pdf",output_str),height = 1.5,width = 4)
   
 spread(glmnet_scores,key = "key",value = "value") %>%
   group_by(dataset,task) %>%
@@ -384,4 +403,5 @@ spread(glmnet_scores,key = "key",value = "value") %>%
         panel.spacing = unit(1.5,"lines")) +
   guides(colour = guide_legend(nrow = 2),
          shape = guide_legend(nrow = 2)) +
-  ggsave("figures/mile-vice-vs-glmnet-scatter.pdf",height = 2.5,width = 2.5)
+  ggsave(
+    sprintf("figures/%s/mile-vice-vs-glmnet-scatter.pdf",output_str),height = 2.5,width = 2.5)

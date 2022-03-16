@@ -12,6 +12,7 @@ select <- dplyr::select
 multi_objective_matching <- c("anemia_binary","binary","mds_binary","disease_binary")
 
 N_points <- 50000
+set.seed(42)
 
 all_conditions <- rbind(
   read_csv(
@@ -37,25 +38,25 @@ all_conditions <- rbind(
 
 conversion_list <- list(
   `Disease detection` = c(
-    Normal = "Normal",`Non-SF3B1-mutant` = "Disease",
+    Normal = "Normal",`SF3B1-wildtype` = "Disease",
     `SF3B1-mutant` = "Disease",`Iron deficiency` = "Disease",
     `Megaloblastic` = "Disease"),
   `Disease classification` = c(
-    `Non-SF3B1-mutant` = "MDS",
+    `SF3B1-wildtype` = "MDS",
     `SF3B1-mutant` = "MDS",`Iron deficiency` = "Anaemia",
     `Megaloblastic` = "Anaemia"),
   `SF3B1mut detection` = c(
-    `Non-SF3B1-mutant` = "Non-SF3B1-mutant",`SF3B1-mutant` = "SF3B1-mutant"),
+    `SF3B1-wildtype` = "SF3B1-wildtype",`SF3B1-mutant` = "SF3B1-mutant"),
   `Anaemia classification` = c(
     `Iron deficiency` = "Iron deficiency",
     `Megaloblastic` = "Megaloblastic"),
   `Multi-objective` = c(
-    Normal = "Normal",`Non-SF3B1-mutant` = "Non-SF3B1-mutant",`SF3B1-mutant` = "SF3B1-mutant",
+    Normal = "Normal",`SF3B1-wildtype` = "SF3B1-wildtype",`SF3B1-mutant` = "SF3B1-mutant",
     `Iron deficiency` = "Iron deficiency",
     `Megaloblastic` = "Megaloblastic"))
 
 fine_class_order <- c(
-  "Normal","Disease","MDS","Anaemia","SF3B1-mutant","Non-SF3B1-mutant",
+  "Normal","Disease","MDS","Anaemia","SF3B1-mutant","SF3B1-wildtype",
   "Iron deficiency","Megaloblastic")
 
 read_final_layer <- function(path) {
@@ -149,9 +150,6 @@ subset_vcq <- function(best_vcq_subset,S) {
     return
 }
 
-
-
-
 # general data-processing -------------------------------------------------
 
 feat_conv <- rev(gsub('\n',' ',features_conversion))
@@ -171,7 +169,6 @@ best_vcq_subset <- rbind(
     mutate(virtual_cell_type_fctr = paste(data_type,cell_type,virtual_cell_type)) %>%
     mutate(feature = factor(feat_conv[feature],levels = feat_conv)))
 
-
 # rbc data-processing -----------------------------------------------------
 
 rbc_cells <- list.files("datasets/many-cells/",pattern = "^rbc-cv_subset\\..*",
@@ -179,24 +176,28 @@ rbc_cells <- list.files("datasets/many-cells/",pattern = "^rbc-cv_subset\\..*",
   lapply(read_csv,col_names = F) %>%
   do.call(what = rbind)
 rbc_cells_subset <- rbc_cells[sample(nrow(rbc_cells),size = N_points,replace = F),]
-colnames(rbc_cells_subset)[1:4] <- c("model_name","slide_id","cell_type","virtual_cell_type")
+colnames(rbc_cells_subset)[1:4] <- c("model_name","slide_id",
+                                     "cell_type","virtual_cell_type")
 colnames(rbc_cells_subset)[5:ncol(rbc_cells_subset)] <- features_all[
   unlist(read.csv("../mile-vice/scripts/rbc_feature_subset",header=F))]
 rbc_cells_subset$unique_idx <- 1:nrow(rbc_cells_subset)
 rbc_cells_subset_long <- rbc_cells_subset %>%
   mutate(cell_type = toupper(cell_type)) %>%
-  gather(key = "feature",value = "value",-model_name,-slide_id,-cell_type,-virtual_cell_type,-unique_idx) %>%
+  gather(key = "feature",value = "value",-model_name,-slide_id,
+         -cell_type,-virtual_cell_type,-unique_idx) %>%
   mutate(feature = factor(feat_conv[feature],levels = feat_conv)) %>%
   group_by(feature) %>%
   merge(all_conditions,by = "slide_id") %>%
   mutate(fine_class = ifelse(
     coarse_class == "MDS",
-    ifelse(grepl('SF3B1',fine_class),"SF3B1-mutant","Non-SF3B1-mutant"),
-    as.character(fine_class))) %>%
+    ifelse(grepl('SF3B1',fine_class),"SF3B1-mutant","SF3B1-wildtype"),
+    as.character(fine_class))) %>% 
+  subset(!grepl("axis",feature)) %>% 
   subset(!grepl("GLCM",feature))
 
 rbc_feature_matrix <- rbc_cells_subset_long %>%
-  select(model_name,feature,unique_idx,virtual_cell_type,slide_id,fine_class,coarse_class,value) %>%
+  select(model_name,feature,unique_idx,virtual_cell_type,slide_id,fine_class,
+         coarse_class,value) %>%
   group_by(feature) %>%
   filter(value <= quantile(value,0.975) & value >= quantile(value,0.025)) %>%
   mutate(value = (value-mean(value))/sd(value)) %>%
@@ -206,7 +207,7 @@ rbc_feature_matrix <- rbc_cells_subset_long %>%
   na.omit()
 
 M <- rbc_feature_matrix[,7:ncol(rbc_feature_matrix)]
-rbc_feature_umap <- umap(M,min_dist = 0.1,verbose=T)
+rbc_feature_umap <- umap(M,min_dist = 0.9,verbose=T)
 rbc_feature_umap_data <- cbind(rbc_feature_matrix[,1:6],rbc_feature_umap$layout)
 
 rbc_feature_matrix_ <- cbind(rbc_feature_matrix[,1:6],M)
@@ -229,23 +230,26 @@ wbc_cells <- list.files("datasets/many-cells/",pattern = "^wbc-cv_subset\\..*",
   lapply(read_csv,col_names = F) %>%
   do.call(what = rbind)
 wbc_cells_subset <- wbc_cells[sample(nrow(wbc_cells),size = N_points,replace = F),]
-colnames(wbc_cells_subset)[1:4] <- c("model_name","slide_id","cell_type","virtual_cell_type")
+colnames(wbc_cells_subset)[1:4] <- c("model_name","slide_id","cell_type",
+                                     "virtual_cell_type")
 colnames(wbc_cells_subset)[5:ncol(wbc_cells_subset)] <- c(features_all,features_nuclear)[
   unlist(read.csv("../mile-vice/scripts/wbc_feature_subset",header=F))]
 wbc_cells_subset$unique_idx <- 1:nrow(wbc_cells_subset)
 wbc_cells_subset_long <- wbc_cells_subset %>%
   mutate(cell_type = toupper(cell_type)) %>%
-  gather(key = "feature",value = "value",-model_name,-slide_id,-cell_type,-virtual_cell_type,-unique_idx) %>%
+  gather(key = "feature",value = "value",-model_name,-slide_id,-cell_type,
+         -virtual_cell_type,-unique_idx) %>%
   mutate(feature = factor(feat_conv[feature],levels = feat_conv)) %>%
   group_by(feature) %>%
   merge(all_conditions,by = "slide_id") %>%
   mutate(fine_class = ifelse(
     coarse_class == "MDS",
-    ifelse(grepl('SF3B1',fine_class),"SF3B1-mutant","Non-SF3B1-mutant"),
+    ifelse(grepl('SF3B1',fine_class),"SF3B1-mutant","SF3B1-wildtype"),
     as.character(fine_class)))
 
 wbc_feature_matrix <- wbc_cells_subset_long %>%
-  select(model_name,feature,unique_idx,virtual_cell_type,slide_id,fine_class,coarse_class,value) %>%
+  select(model_name,feature,unique_idx,virtual_cell_type,slide_id,fine_class,
+         coarse_class,value) %>%
   group_by(feature) %>%
   filter(value <= quantile(value,0.99) & value >= quantile(value,0.01)) %>%
   mutate(value = (value-mean(value))/sd(value)) %>%
@@ -255,7 +259,7 @@ wbc_feature_matrix <- wbc_cells_subset_long %>%
   na.omit()
 
 M <- wbc_feature_matrix[,7:ncol(wbc_feature_matrix)]
-wbc_feature_umap <- umap(M,min_dist = 0.1,verbose=T)
+wbc_feature_umap <- umap(M,min_dist = 0.1,verbose=T,n_neighbors=200)
 wbc_feature_umap_data <- cbind(wbc_feature_matrix[,1:6],wbc_feature_umap$layout)
 
 wbc_feature_matrix_ <- cbind(wbc_feature_matrix[,1:6],M)
@@ -274,7 +278,9 @@ wbc_vc_centers_data <- cbind(
 # plotting simple u-map ---------------------------------------------------
 
 bw <- bandwidth.nrd(c(rbc_feature_umap_data$`1`,rbc_feature_umap_data$`2`))
+bw_rbc <- bw
 L <- c(range(rbc_feature_umap_data$`1`),range(rbc_feature_umap_data$`2`))
+L_rbc <- L
 long_kde2d <- function(x,y,h,n=25,lims = c(range(x), range(y))) {
   X <- kde2d(x,y,h,n,lims)
   data.frame(x = X$x,X$z) %>%
@@ -306,11 +312,12 @@ plot_grid(
     mutate(fine_class = conversion_list[[decode_model_name(model_name)]][fine_class]) %>%
     group_by(model_name,fine_class) %>%
     summarise(long_kde2d(`1`,`2`,bw,100,L)) %>%
-    subset(z >= 0.02) %>%
+    subset(z >= 0.0005) %>%
     group_by(model_name,x,y) %>%
-    summarise(P = max(z)/sum(sort(z,decreasing = T)[2:length(z)]),
+    summarise(P = max(z)/sum(sort(z,decreasing = T)[1:length(z)]),
               cl = fine_class[which.max(z)]) %>%
     mutate(cl = factor(cl,levels = fine_class_order)) %>% 
+    na.omit %>% 
     ggplot(aes(x = x,y = y,fill = cl,alpha = P)) +
     geom_tile() + 
     scale_fill_manual(values = fine_colours,name = "Predominant class") + 
@@ -366,8 +373,8 @@ plot_grid(
     ylab("UMAP2") + 
     scale_colour_discrete(guide = F) +
     facet_wrap(~ decode_model_name(model_name),nrow = 1) +
-    scale_x_continuous(limits = L[1:2]) + 
-    scale_y_continuous(breaks = seq(-9,9,by = 3),limits = L[3:4]),
+    scale_x_continuous(limits = L_rbc[1:2]) + 
+    scale_y_continuous(breaks = seq(-9,9,by = 3),limits = L_rbc[3:4]),
   align = "hv",axis = "tblr",ncol = 1,rel_heights = c(1,1)) + 
   ggsave("figures/u-map-with-vc.pdf",width=5,height=2.5)
 
@@ -379,7 +386,7 @@ plot_grid(
     summarise(long_kde2d(`1`,`2`,bw,100,L)) %>%
     subset(z >= 0.01) %>%
     group_by(model_name,x,y) %>%
-    summarise(P = max(z)/sum(sort(z,decreasing = T)[2:length(z)]),
+    summarise(P = max(z)/sum(sort(z,decreasing = T)[1:length(z)]),
               cl = fine_class[which.max(z)]) %>%
     mutate(cl = factor(cl,levels = fine_class_order)) %>% 
     ggplot(aes(x = x,y = y,fill = cl,
@@ -399,12 +406,13 @@ plot_grid(
     rowwise() %>%
     mutate(fine_class = conversion_list[[decode_model_name(model_name)]][fine_class]) %>%
     group_by(model_name,fine_class) %>%
-    summarise(long_kde2d(`1`,`2`,bw,100,L)) %>%
-    subset(z >= 0.01) %>%
+    summarise(long_kde2d(`1`,`2`,bw_rbc,100,L_rbc)) %>%
+    subset(z >= 0.0005) %>%
     group_by(model_name,x,y) %>%
-    summarise(P = max(z)/sum(sort(z,decreasing = T)[2:length(z)]),
+    summarise(P = max(z)/sum(sort(z,decreasing = T)[1:length(z)]),
               cl = fine_class[which.max(z)]) %>%
     mutate(cl = factor(cl,levels = fine_class_order)) %>% 
+    na.omit %>% 
     ggplot(aes(x = x,y = y,fill = cl,
                alpha = P)) +
     geom_tile() + 
@@ -415,9 +423,7 @@ plot_grid(
           legend.box = "vertical",legend.margin = margin()) + 
     scale_alpha(name = "density ratio",trans = 'log10',range = c(1e-8,1)) +
     xlab("UMAP1") +
-    ylab("UMAP2") +
-    scale_x_continuous(limits = L[1:2]) + 
-    scale_y_continuous(limits = L[3:4]),
+    ylab("UMAP2"),
   align = "hv",axis = "tblr",ncol = 1,rel_heights = c(1,1)) + 
   ggsave("figures/u-map-density-ratio.pdf",width=5,height=3.5)
 

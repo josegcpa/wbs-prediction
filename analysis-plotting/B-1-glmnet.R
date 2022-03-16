@@ -10,7 +10,7 @@ library(ggpubr)
 library(caret)
 library(glmnet)
 library(pROC)
-#library(RRF)
+library(RRF)
 library(MLmetrics)
 library(RANN)
 
@@ -157,7 +157,7 @@ wbc_all_cells_summaries <- read_csv(
   mutate(fine_class = ifelse(coarse_class == "MDS",
                              ifelse(grepl("SF3B1",fine_class),
                                     "SF3B1-mutant",
-                                    "Non-SF3B1-mutant"),
+                                    "SF3B1-wildtype"),
                              as.character(fine_class))) %>%
   mutate(fine_class = factor(
     as.character(fine_class),
@@ -176,7 +176,7 @@ wbc_adden_1_cells_summaries <- read_csv(
   mutate(fine_class = ifelse(coarse_class == "MDS",
                              ifelse(grepl("SF3B1",fine_class),
                                     "SF3B1-mutant",
-                                    "Non-SF3B1-mutant"),
+                                    "SF3B1-wildtype"),
                              as.character(fine_class))) %>%
   mutate(fine_class = factor(
     as.character(fine_class),
@@ -195,7 +195,7 @@ rbc_all_cells_summaries <- read_csv(
   mutate(fine_class = ifelse(coarse_class == "MDS",
                              ifelse(grepl("SF3B1",fine_class),
                                     "SF3B1-mutant",
-                                    "Non-SF3B1-mutant"),
+                                    "SF3B1-wildtype"),
                              as.character(fine_class))) %>%
   mutate(fine_class = factor(
     as.character(fine_class),
@@ -214,7 +214,7 @@ rbc_adden_1_cells_summaries <- read_csv(
   mutate(fine_class = ifelse(coarse_class == "MDS",
                              ifelse(grepl("SF3B1",fine_class),
                                     "SF3B1-mutant",
-                                    "Non-SF3B1-mutant"),
+                                    "SF3B1-wildtype"),
                              as.character(fine_class))) %>%
   mutate(fine_class = factor(
     as.character(fine_class),
@@ -229,23 +229,23 @@ K <- 5
 label_conversion <- list(
   disease_detection = c(
     `Normal` = 0,
-    `SF3B1-mutant` = 1,`Non-SF3B1-mutant` = 1,
+    `SF3B1-mutant` = 1,`SF3B1-wildtype` = 1,
     `Iron deficiency` = 1,`Megaloblastic` = 1),
   disease_classification = c(
     `Normal` = NA,
-    `SF3B1-mutant` = 1,`Non-SF3B1-mutant` = 1,
+    `SF3B1-mutant` = 1,`SF3B1-wildtype` = 1,
     `Iron deficiency` = 0,`Megaloblastic` = 0),
   sf3b1 = c(
     `Normal` = NA,
-    `SF3B1-mutant` = 1,`Non-SF3B1-mutant` = 0,
+    `SF3B1-mutant` = 1,`SF3B1-wildtype` = 0,
     `Iron deficiency` = NA,`Megaloblastic` = NA),
   anaemia_classification = c(
     `Normal` = NA,
-    `SF3B1-mutant` = NA,`Non-SF3B1-mutant` = NA,
+    `SF3B1-mutant` = NA,`SF3B1-wildtype` = NA,
     `Iron deficiency` = 0,`Megaloblastic` = 1),
   multiclass_classification = c(
     `Normal` = 1,
-    `SF3B1-mutant` = 2,`Non-SF3B1-mutant` = 3,
+    `SF3B1-mutant` = 2,`SF3B1-wildtype` = 3,
     `Iron deficiency` = 4,`Megaloblastic` = 5)
 )
 
@@ -322,8 +322,8 @@ full_dataset_collection <- list(
   fine_labels = full_dataset$fine_class,
   slide_id = full_dataset$slide_id) 
 
-if (file.exists("data_output/folds_preproc.RDS")) {
-  tmp <- readRDS("data_output/folds_preproc.RDS")
+if (file.exists("data_output/folds_preproc.rds")) {
+  tmp <- readRDS("data_output/folds_preproc.rds")
   stratified_folds <- tmp$stratified_folds
   scales <- tmp$scales
 } else {
@@ -334,23 +334,23 @@ if (file.exists("data_output/folds_preproc.RDS")) {
       stratified_folds,
       function(x) {
         pp <- preProcess(full_dataset_collection$data$full[x$train,],
-                         method = c("center","scale","corr","nzv","medianImpute"))
+                         method = c("center","scale","nzv","medianImpute"))
         return(pp)}),
     morphology = lapply(
       stratified_folds,
       function(x) {
         pp <- preProcess(full_dataset_collection$data$morphology[x$train,],
-                         method = c("center","scale","corr","nzv","medianImpute"))
+                         method = c("center","scale","nzv","medianImpute"))
         return(pp)}),
     bcdem =   lapply(
       stratified_folds,
       function(x) {
         pp <- preProcess(full_dataset_collection$data$bcdem[x$train,],
-                         method = c("center","scale","corr","nzv","medianImpute"))
+                         method = c("center","scale","nzv","medianImpute"))
         return(pp)})
   )
   saveRDS(list(stratified_folds = stratified_folds,scales = scales),
-          file = "data_output/folds_preproc.RDS")
+          file = "data_output/folds_preproc.rds")
 }
 
 # model training (glmnet) -------------------------------------------------
@@ -1160,7 +1160,7 @@ for (x in c("Anaemia classification","Disease classification",
     group_by(grouping) %>%
     mutate(l = sort(glmnet,decreasing=T)[5]) %>%
     mutate(l = ifelse(is.na(l),0,l)) %>% 
-    filter(glmnet >= l)  %>%
+    filter(glmnet > l)  %>%
     mutate(grouping_ = gsub(' ','\n',grouping))
   X %>%
     ggplot(aes(x = feature_idx,y = glmnet*sign_glmnet,colour = grouping)) + 
@@ -1328,7 +1328,7 @@ wbc_cells_summaries_oos <- read_csv(
   mutate(fine_class = ifelse(coarse_class == "MDS",
                              ifelse(grepl("SF3B1",fine_class),
                                     "SF3B1-mutant",
-                                    "Non-SF3B1-mutant"),
+                                    "SF3B1-wildtype"),
                              as.character(fine_class))) %>%
   mutate(fine_class = factor(
     as.character(fine_class),
@@ -1347,7 +1347,7 @@ rbc_cells_summaries_oos <- read_csv(
   mutate(fine_class = ifelse(coarse_class == "MDS",
                              ifelse(grepl("SF3B1",fine_class),
                                     "SF3B1-mutant",
-                                    "Non-SF3B1-mutant"),
+                                    "SF3B1-wildtype"),
                              as.character(fine_class))) %>%
   mutate(fine_class = factor(
     as.character(fine_class),

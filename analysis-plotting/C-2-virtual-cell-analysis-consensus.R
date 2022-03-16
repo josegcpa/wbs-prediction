@@ -2,8 +2,13 @@
 
 source("function-library.R")
 
+args <- commandArgs(trailingOnly=TRUE)
+output_str <- ifelse(length(args)>0,args[1],"subset")
+dir.create(paste('figures',output_str,sep = "/"),showWarnings = F)
+
 library(ggrepel)
 library(umap)
+library(cowplot)
 
 multi_objective_matching <- c("anemia_binary","binary","mds_binary","disease_binary")
 
@@ -158,23 +163,40 @@ subset_vcq <- function(best_vcq_subset,S) {
 
 # data loading and processing ---------------------------------------------
 
+so_layers <- paste(Filter(
+  nchar,c("../mile-vice/best_models/best_layers",output_str)),collapse="_")
+mo_layers <- paste(Filter(
+  nchar,c("../mile-vice/best_models/best_layers_mo",output_str)),collapse="_")
+vcq_layers <- paste(Filter(
+  nchar,c("../mile-vice/best_models/best_vcq_layers",output_str)),collapse="_")
+vcq_layers_mo <- paste(Filter(
+  nchar,c("../mile-vice/best_models/best_vcq_layers_mo",output_str)),collapse="_")
+wbc_subset_path <- NULL
+rbc_subset_path <- NULL
+if (grepl("subset",output_str)){
+  wbc_subset_path <- "../mile-vice/scripts/wbc_feature_subset"
+  rbc_subset_path <- "../mile-vice/scripts/rbc_feature_subset"
+} 
+if (grepl("unbiased",output_str)) {
+  wbc_subset_path <- "../mile-vice/scripts/wbc_feature_subset_unbiased"
+  rbc_subset_path <- "../mile-vice/scripts/rbc_feature_subset_unbiased"
+}
+
 feat_conv <- rev(gsub('\n',' ',features_conversion))
 
-best_layers_subset <- read_final_layer(
-  path = "../mile-vice/best_models/best_layers_subset")
-best_layers_subset_mo <- read_final_layer(
-  path = "../mile-vice/best_models/best_layers_mo_subset")
+best_layers_subset <- read_final_layer(path = so_layers)
+best_layers_subset_mo <- read_final_layer(path = mo_layers)
 best_vcq_subset <- read_vcq_layer(
-  path = "../mile-vice/best_models/best_vcq_layers_subset",
-  wbc_subset_path = "../mile-vice/scripts/wbc_feature_subset",
-  rbc_subset_path = "../mile-vice/scripts/rbc_feature_subset") %>%
+  path = vcq_layers,
+  wbc_subset_path = wbc_subset_path,
+  rbc_subset_path = rbc_subset_path) %>%
   mutate(virtual_cell_type_fctr = paste(
     decode_model_name(model_name),data_type,cell_type,virtual_cell_type)) %>%
   mutate(feature = factor(feat_conv[feature],levels = feat_conv))
 best_vcq_subset_mo <- read_vcq_layer(
-  path = "../mile-vice/best_models/best_vcq_layers_mo_subset",
-  wbc_subset_path = "../mile-vice/scripts/wbc_feature_subset",
-  rbc_subset_path = "../mile-vice/scripts/rbc_feature_subset") %>%
+  path = vcq_layers_mo,
+  wbc_subset_path = wbc_subset_path,
+  rbc_subset_path = rbc_subset_path) %>%
   mutate(virtual_cell_type_fctr = paste(data_type,cell_type,virtual_cell_type)) %>%
   mutate(feature = factor(feat_conv[feature],levels = feat_conv))
 
@@ -193,7 +215,7 @@ for (model in unique(best_layers_subset$model_name)) {
   consensus <- read_consensus(path)
   consensus$model_name <- model
   consensus$is_consensual <- T
-  all_consensus[[model]] <- consensus
+  all_consensus[[model]] <- as.data.frame(consensus)
 }
 
 blmt <- best_layers_subset_mo %>%
@@ -217,7 +239,7 @@ for (i in 1:nrow(blmt)) {
   consensus$model_name <- model
   consensus$task_idx <- blmt$task_idx[i]
   consensus$is_consensual <- T
-  all_consensus_mo[[paste(model,task_name)]] <- consensus
+  all_consensus_mo[[paste(model,task_name)]] <- as.data.frame(consensus)
 }
 
 cell_proportions_df <- do.call(rbind,all_cell_proportions) %>%
@@ -244,7 +266,8 @@ full_proportions_cell_type_mo$task_idx <- multi_objective_matching[full_proporti
 N_MIN <- 12
 H <- 2
 W <- 5
-M <- 1
+M <- 2
+mm <- 0.5
 
 generic_objects <- list( 
   theme = theme_pretty(base_size = 6) + theme(
@@ -264,8 +287,8 @@ generic_objects <- list(
                           mapping = aes(y = log_ratio,shape = "Proportion ratio"),size = 1.0),
   scale_y = scale_y_continuous(
     sec.axis = sec_axis(~ 1*., name = "Average proportion ratio (\u25C7)",
-                        breaks = c(-2,-1,0,1,2)*2,
-                        labels = function(x) 2^(x/2))),
+                        breaks = c(-2,-1,0,1,2)*mm,
+                        labels = function(x) 2^(x/mm))),
   scale_x = scale_x_discrete(labels = function(x) str_match(x,'[0-9]+$')),
   scale_shape = scale_shape_manual(values = c(`Proportion ratio` = 5),name = NULL),
   scale_alpha = scale_alpha_manual(values = c(0.2,1),breaks = c(F,T)),
@@ -289,7 +312,7 @@ tmp_data <- full_proportions_cell_type %>%
   group_by(virtual_cell_type,data_type,cell_type) %>% 
   arrange(coarse_class) %>% 
   mutate(ratio = median_prop[2]/median_prop[1]) %>%
-  mutate(log_ratio = 2*log(ratio,2),d = abs(y[2] - y[1])) %>% 
+  mutate(log_ratio = mm*log(ratio,2),d = abs(y[2] - y[1])) %>% 
   mutate(abs_log_ratio = abs(log_ratio)) %>%
   group_by(data_type,cell_type) %>% 
   filter(d > rev(sort(d))[N_MIN]) %>%
@@ -314,8 +337,7 @@ tmp_data %>%
   generic_objects$scale_shape +
   generic_objects$scale_alpha +
   scale_colour_manual(values = fine_colours,name = NULL,breaks = c("Normal","Disease")) +
-  ggsave(
-    "figures/mile-vice-so-disease-detection-consensus.pdf",device=cairo_pdf,height=H,width=W)
+  ggsave(sprintf("figures/%s/mile-vice-so-disease-detection-consensus.pdf",output_str),device=cairo_pdf,height=H,width=W)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -323,13 +345,11 @@ curr_vcq <- subset_vcq(best_vcq_subset,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-so-disease-detection-coefficients-rbc-consensus.pdf",height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-so-disease-detection-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
-subset(best_vcq_subset,cell_type == 'WBC') %>% 
+subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-so-disease-detection-coefficients-wbc-consensus.pdf",height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-so-disease-detection-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # Disease classification 
 
@@ -346,7 +366,7 @@ tmp_data <- full_proportions_cell_type %>%
   group_by(virtual_cell_type,data_type,cell_type) %>% 
   arrange(coarse_class) %>% 
   mutate(ratio = median_prop[1]/median_prop[2]) %>%
-  mutate(log_ratio = 2*log(ratio,2),d = abs(y[1] - y[2])) %>% 
+  mutate(log_ratio = mm*log(ratio,2),d = abs(y[1] - y[2])) %>% 
   mutate(abs_log_ratio = abs(log_ratio)) %>%
   group_by(data_type,cell_type) %>% 
   filter(d > rev(sort(d))[N_MIN]) %>% 
@@ -371,7 +391,7 @@ tmp_data %>%
   generic_objects$scale_shape +
   generic_objects$scale_alpha +
   scale_colour_manual(values = fine_colours,name = NULL,breaks = c("MDS","Anaemia")) +
-  ggsave("figures/mile-vice-so-disease-classification-consensus.pdf",device=cairo_pdf,height=H,width=W)
+  ggsave(sprintf("figures/%s/mile-vice-so-disease-classification-consensus.pdf",output_str),device=cairo_pdf,height=H,width=W)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -379,13 +399,11 @@ curr_vcq <- subset_vcq(best_vcq_subset,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-so-disease-classification-coefficients-rbc-consensus.pdf",height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-so-disease-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-so-disease-classification-coefficients-wbc-consensus.pdf",height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-so-disease-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # SF3B1mut detection
 
@@ -403,7 +421,7 @@ tmp_data <- full_proportions_cell_type %>%
   group_by(virtual_cell_type,data_type,cell_type) %>% 
   arrange(fine_class) %>% 
   mutate(ratio = median_prop[2]/median_prop[1]) %>%
-  mutate(log_ratio = 2*log(ratio,2),d = abs(y[1] - y[2])) %>% 
+  mutate(log_ratio = mm*log(ratio,2),d = abs(y[1] - y[2])) %>% 
   mutate(abs_log_ratio = abs(log_ratio)) %>%
   mutate(AD = abs(y[1] - y[2])) %>%
   group_by(data_type,cell_type) %>% 
@@ -430,7 +448,7 @@ tmp_data %>%
   generic_objects$scale_alpha +
   scale_colour_manual(values = c(fine_colours,`log(ratio)` = "grey10"),name = NULL,
                       breaks = c("SF3B1-mutant","SF3B1-wildtype")) + 
-  ggsave("figures/mile-vice-so-mds-classification-consensus.pdf",height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mile-vice-so-mds-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -438,13 +456,11 @@ curr_vcq <- subset_vcq(best_vcq_subset,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-so-mds-classification-coefficients-rbc-consensus.pdf",height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-so-mds-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-so-mds-classification-coefficients-wbc-consensus.pdf",height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-so-mds-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # Anaemia detection
 
@@ -461,7 +477,7 @@ tmp_data <- full_proportions_cell_type %>%
   group_by(virtual_cell_type,data_type,cell_type) %>% 
   arrange(fine_class) %>% 
   mutate(ratio = median_prop[2]/median_prop[1]) %>%
-  mutate(log_ratio = 2*log(ratio,2),d = abs(y[2] - y[1])) %>% 
+  mutate(log_ratio = mm*log(ratio,2),d = abs(y[2] - y[1])) %>% 
   mutate(abs_log_ratio = abs(log_ratio)) %>%
   group_by(data_type,cell_type) %>% 
   filter(d > rev(sort(d))[N_MIN]) %>% 
@@ -487,7 +503,7 @@ tmp_data %>%
   generic_objects$scale_alpha +
   scale_colour_manual(values = c(fine_colours,`log(ratio)` = "grey10"),name = NULL,
                       breaks = c("Iron deficiency","Megaloblastic")) + 
-  ggsave("figures/mile-vice-so-anaemia-classification-consensus.pdf",height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mile-vice-so-anaemia-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -495,15 +511,15 @@ curr_vcq <- subset_vcq(best_vcq_subset,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-so-anaemia-classification-coefficients-rbc-consensus.pdf",height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-so-anaemia-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-so-anaemia-classification-coefficients-wbc-consensus.pdf",height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-so-anaemia-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # multiple objective plots ------------------------------------------------
+
+groups_of_cells <- list()
 
 # Disease detection
 
@@ -521,11 +537,16 @@ tmp_data <- full_proportions_cell_type_mo %>%
   group_by(virtual_cell_type,data_type,cell_type) %>% 
   arrange(coarse_class) %>% 
   mutate(ratio = median_prop[2]/median_prop[1]) %>%
-  mutate(log_ratio = 2*log(ratio,2),d = abs(y[2] - y[1])) %>% 
+  mutate(log_ratio = mm*log(ratio,2),d = abs(y[2] - y[1])) %>% 
   mutate(abs_log_ratio = abs(log_ratio)) %>%
   group_by(data_type,cell_type) %>% 
   filter(d > rev(sort(d))[N_MIN]) %>% 
   mutate(virtual_cell_type_fctr = reorder(virtual_cell_type_fctr,log_ratio)) 
+
+groups_of_cells[[length(groups_of_cells)+1]] <- tmp_data %>% 
+  select(cell_type,virtual_cell_type,y = ratio,is_consensual) %>%
+  distinct %>%
+  mutate(task_idx = "Disease detection")
 
 tmp_data %>%
   ggplot(aes(x = virtual_cell_type_fctr,
@@ -546,7 +567,7 @@ tmp_data %>%
   generic_objects$scale_shape +
   generic_objects$scale_alpha +
   scale_colour_manual(values = fine_colours,name = NULL,breaks = c("Normal","Disease")) +
-  ggsave("figures/mile-vice-mo-disease-detection-consensus.pdf",height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mile-vice-mo-disease-detection-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -554,13 +575,11 @@ curr_vcq <- subset_vcq(best_vcq_subset_mo,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-mo-disease-detection-coefficients-rbc-consensus.pdf",height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-mo-disease-detection-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-mo-disease-detection-coefficients-wbc-consensus.pdf",height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-mo-disease-detection-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # Disease classification 
 
@@ -576,11 +595,16 @@ tmp_data <- full_proportions_cell_type_mo %>%
   group_by(virtual_cell_type,data_type,cell_type) %>% 
   arrange(coarse_class) %>% 
   mutate(ratio = median_prop[1]/median_prop[2]) %>%
-  mutate(log_ratio = 2*log(ratio,2),d = abs(y[1] - y[2])) %>% 
+  mutate(log_ratio = mm*log(ratio,2),d = abs(y[1] - y[2])) %>% 
   mutate(abs_log_ratio = abs(log_ratio)) %>%
   group_by(data_type,cell_type) %>% 
   filter(d > rev(sort(d))[N_MIN]) %>% 
   mutate(virtual_cell_type_fctr = reorder(virtual_cell_type_fctr,log_ratio)) 
+
+groups_of_cells[[length(groups_of_cells)+1]] <- tmp_data %>% 
+  select(cell_type,virtual_cell_type,y = ratio,is_consensual) %>%
+  distinct %>%
+  mutate(task_idx = "Disease classification")
 
 tmp_data %>%
   ggplot(aes(x = virtual_cell_type_fctr,
@@ -601,7 +625,7 @@ tmp_data %>%
   generic_objects$scale_shape +
   generic_objects$scale_alpha +
   scale_colour_manual(values = fine_colours,name = NULL,breaks = c("MDS","Anaemia")) + 
-  ggsave("figures/mile-vice-mo-disease-classification-consensus.pdf",height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mile-vice-mo-disease-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -609,13 +633,11 @@ curr_vcq <- subset_vcq(best_vcq_subset_mo,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-mo-disease-classification-coefficients-rbc-consensus.pdf",height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-mo-disease-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-mo-disease-classification-coefficients-wbc-consensus.pdf",height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-mo-disease-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # SF3B1mut detection
 
@@ -631,13 +653,18 @@ tmp_data <- full_proportions_cell_type_mo %>%
   mutate(virtual_cell_type_fctr = paste(data_type,cell_type,virtual_cell_type)) %>% 
   group_by(virtual_cell_type,data_type,cell_type) %>% 
   arrange(fine_class) %>% 
-  mutate(ratio = median_prop[1]/median_prop[2]) %>%
-  mutate(log_ratio = 2*log(ratio,2),d = abs(y[1] - y[2])) %>% 
+  mutate(ratio = median_prop[2]/median_prop[1]) %>%
+  mutate(log_ratio = mm*log(ratio,2),d = abs(y[1] - y[2])) %>% 
   mutate(abs_log_ratio = abs(log_ratio)) %>%
   mutate(AD = abs(y[1] - y[2])) %>%
   group_by(data_type,cell_type) %>% 
   filter(d > rev(sort(d))[N_MIN]) %>% 
   mutate(virtual_cell_type_fctr = reorder(virtual_cell_type_fctr,log_ratio)) 
+
+groups_of_cells[[length(groups_of_cells)+1]] <- tmp_data %>% 
+  select(cell_type,virtual_cell_type,y = ratio,is_consensual) %>%
+  distinct %>%
+  mutate(task_idx = "SF3B1mut detection")
 
 tmp_data %>%
   ggplot(aes(x = virtual_cell_type_fctr,
@@ -659,7 +686,7 @@ tmp_data %>%
   generic_objects$scale_alpha +
   scale_colour_manual(values = c(fine_colours,`log(ratio)` = "grey10"),name = NULL,
                       breaks = c("SF3B1-mutant","SF3B1-wildtype")) + 
-  ggsave("figures/mile-vice-mo-mds-classification-consensus.pdf",height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mile-vice-mo-mds-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -667,13 +694,11 @@ curr_vcq <- subset_vcq(best_vcq_subset_mo,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-mo-mds-classification-coefficients-rbc-consensus.pdf",height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-mo-mds-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-mo-mds-classification-coefficients-wbc-consensus.pdf",height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-mo-mds-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # Anaemia detection
 
@@ -689,11 +714,16 @@ tmp_data <- full_proportions_cell_type_mo %>%
   group_by(virtual_cell_type,data_type,cell_type) %>% 
   arrange(fine_class) %>% 
   mutate(ratio = median_prop[2]/median_prop[1]) %>%
-  mutate(log_ratio = 2*log(ratio,2),d = abs(y[2] - y[1])) %>% 
+  mutate(log_ratio = mm*log(ratio,2),d = abs(y[2] - y[1])) %>% 
   mutate(abs_log_ratio = abs(log_ratio)) %>%
   group_by(data_type,cell_type) %>% 
   filter(d > rev(sort(d))[N_MIN]) %>% 
   mutate(virtual_cell_type_fctr = reorder(virtual_cell_type_fctr,log_ratio)) 
+
+groups_of_cells[[length(groups_of_cells)+1]] <- tmp_data %>% 
+  select(cell_type,virtual_cell_type,y = ratio,is_consensual) %>%
+  distinct %>%
+  mutate(task_idx = "Anaemia classification")
 
 tmp_data %>%
   ggplot(aes(x = virtual_cell_type_fctr,
@@ -715,7 +745,7 @@ tmp_data %>%
   generic_objects$scale_alpha +
   scale_colour_manual(values = c(fine_colours,`log(ratio)` = "grey10"),name = NULL,
                       breaks = c("Iron deficiency","Megaloblastic")) +
-  ggsave("figures/mile-vice-mo-anaemia-classification-consensus.pdf",height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mile-vice-mo-anaemia-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -723,13 +753,51 @@ curr_vcq <- subset_vcq(best_vcq_subset_mo,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-mo-anaemia-classification-coefficients-rbc-consensus.pdf",height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-mo-anaemia-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
+  ggsave(sprintf("figures/%s/mile-vice-mo-anaemia-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
+
+label_list <- list(
+  `Disease detection` = c("D","C"),
+  `Disease classification` = c("An","MDS"),
+  `SF3B1mut detection` = c("Mut","w.t."),
+  `Anaemia classification` = c("ID","MA")
+)
+
+groups_of_cells_df <- groups_of_cells %>%
+  do.call(what = rbind) %>%
+  group_by(virtual_cell_type,data_type,cell_type) %>%
+  mutate(total_relevance = sum(is_consensual) * 1000 + length(task_idx) + mean(abs(y))) %>% 
+  mutate(virtual_cell_type = paste(data_type,cell_type,virtual_cell_type)) %>%
+  mutate(task_idx = factor(task_idx,levels = c("Disease detection","Disease classification",
+                                               "SF3B1mut detection","Anaemia classification") %>% rev)) %>% 
+  subset(data_type == "Morphology + B.C.") %>%
+  mutate(is_consensual = ifelse(is_consensual,T,NA)) %>%
+  rowwise() %>%
+  mutate(label = label_list[[as.character(task_idx)]][as.numeric(y > 1) + 1])
+
+groups_of_cells_df %>% 
+  ggplot(aes(x = reorder(virtual_cell_type,-total_relevance),fill = y,y = task_idx)) +
+  geom_tile() + 
+  geom_label(aes(label = label),size = 2,label.size = unit(0,"cm"),
+             fill = "white",label.padding = unit(0.07,"cm"),label.r = unit(0,"cm"),
+             alpha = 0.8) +
+  geom_tile(data = subset(groups_of_cells_df,is_consensual==T),
+            aes(colour = is_consensual),size = 1,fill = NA) +
+  facet_wrap( ~ cell_type,scales = "free_x",ncol = 1) + 
+  theme_pretty(base_size = 6) + 
+  scale_fill_gradient2(low = "blue4",high = "red4",mid = "white",midpoint = 1,
+                       name = "Proportion ratio") + 
+  scale_colour_manual(values = c("black"),guide="none") +
+  theme(axis.title.y = element_blank(),legend.key.width = unit(0.2,"cm"),
+        legend.text = element_text(size = 6)) + 
+  xlab("Virtual cell type") + 
+  scale_x_discrete(labels = function(x) str_match(x,"[0-9]+"),expand = c(0,0)) + 
+  scale_y_discrete(expand = c(0,0)) +
   ggsave(
-    "figures/mile-vice-mo-anaemia-classification-coefficients-wbc-consensus.pdf",height=4.2,width=4.5)
+    sprintf("figures/%s/mile-vice-mo-map.pdf",output_str),height=2.4,width=4)
 
 # multiple objective correlations -----------------------------------------
 
@@ -764,7 +832,7 @@ tmp_data %>%
     legend.key.size = unit(0,"cm"),
     strip.text = element_text(margin = ggplot2::margin()),
     strip.background = element_rect(fill = NA,color = NA)) + 
-  ggsave("figures/mile-vice-multiple-objective-median-effect-consensus.pdf",height=1.5,width=3)
+  ggsave(sprintf("figures/%s/mile-vice-multiple-objective-median-effect-consensus.pdf",output_str),height=1.5,width=3)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -772,13 +840,11 @@ curr_vcq <- subset_vcq(best_vcq_subset_mo,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-mo-coefficients-rbc-consensus.pdf",height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-mo-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(
-    "figures/mile-vice-mo-coefficients-wbc-consensus.pdf",height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mile-vice-mo-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # slide-similarity heatmap ------------------------------------------------
 
@@ -792,9 +858,9 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
     select(-virtual_cell_type,-cell_type) %>% 
     spread(key = "VC",value = "proportion") %>%
     mutate(fine_class = conversion_list[[decode_model_name(M)]][as.character(fine_class)])
-  cos_sim <- as.matrix(S[,-c(1:5)] / sqrt(rowSums(S[,-c(1:5)] * S[,-c(1:5)])))
-  cos_sim <- cos_sim %*% t(cos_sim)
-  dm <- as.dist(1-cos_sim)
+  #cos_sim <- as.matrix(S[,-c(1:5)] / sqrt(rowSums(S[,-c(1:5)] * S[,-c(1:5)])))
+  #cos_sim <- cos_sim %*% t(cos_sim)
+  #dm <- as.dist(1-cos_sim)
   dm <- dist(S[,-c(1:5)])
   O <- hclust(dm, method = "ward.D" )$order
   heatmap_data <- data.frame(
@@ -833,7 +899,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave("figures/mile-vice-heatmap-distance-rbc-consensus.pdf",height = 4.5,width = 5)
+  ggsave(sprintf("figures/%s/mile-vice-heatmap-distance-rbc-consensus.pdf",output_str),height = 4.5,width = 5)
 
 all_heatmaps <- list()
 for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T)) {
@@ -845,9 +911,9 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
     select(-virtual_cell_type,-cell_type) %>% 
     spread(key = "VC",value = "proportion") %>%
     mutate(fine_class = conversion_list[[decode_model_name(M)]][as.character(fine_class)])
-  cos_sim <- as.matrix(S[,-c(1:5)] / sqrt(rowSums(S[,-c(1:5)] * S[,-c(1:5)])))
-  cos_sim <- cos_sim %*% t(cos_sim)
-  dm <- as.dist(1-cos_sim)
+  #cos_sim <- as.matrix(S[,-c(1:5)] / sqrt(rowSums(S[,-c(1:5)] * S[,-c(1:5)])))
+  #cos_sim <- cos_sim %*% t(cos_sim)
+  #dm <- as.dist(1-cos_sim)
   dm <- dist(S[,-c(1:5)])
   O <- hclust(dm, method = "ward.D" )$order
   heatmap_data <- data.frame(
@@ -886,7 +952,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave("figures/mile-vice-heatmap-distance-wbc-consensus.pdf",height = 4.5,width = 5)
+  ggsave(sprintf("figures/%s/mile-vice-heatmap-distance-wbc-consensus.pdf",output_str),height = 4.5,width = 5)
 
 all_heatmaps <- list()
 for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T)) {
@@ -898,9 +964,9 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
     select(-virtual_cell_type,-cell_type) %>% 
     spread(key = "VC",value = "proportion") %>%
     mutate(fine_class = conversion_list[[decode_model_name(M)]][as.character(fine_class)])
-  cos_sim <- as.matrix(S[,-c(1:5)] / sqrt(rowSums(S[,-c(1:5)] * S[,-c(1:5)])))
-  cos_sim <- cos_sim %*% t(cos_sim)
-  dm <- as.dist(1-cos_sim)
+  # cos_sim <- as.matrix(S[,-c(1:5)] / sqrt(rowSums(S[,-c(1:5)] * S[,-c(1:5)])))
+  # cos_sim <- cos_sim %*% t(cos_sim)
+  # dm <- as.dist(1-cos_sim)
   dm <- dist(S[,-c(1:5)])
   O <- hclust(dm, method = "ward.D" )$order
   heatmap_data <- data.frame(
@@ -939,7 +1005,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave("figures/mile-vice-heatmap-distance-consensus.pdf",height = 4.5,width = 5)
+  ggsave(sprintf("figures/%s/mile-vice-heatmap-distance-consensus.pdf",output_str),height = 4.5,width = 5)
 
 all_heatmaps <- list()
 for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T)) {
@@ -994,7 +1060,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave("figures/mile-vice-heatmap-distance-mo-consensus.pdf",height = 4.5,width = 5)
+  ggsave(sprintf("figures/%s/mile-vice-heatmap-distance-mo-consensus.pdf",output_str),height = 4.5,width = 5)
 
 # virtual cell composition heatmap ----------------------------------------
 
@@ -1047,7 +1113,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave("figures/mile-vice-heatmap-vc-consensus.pdf",height = 6.5,width = 5.5)
+  ggsave(sprintf("figures/%s/mile-vice-heatmap-vc-consensus.pdf",output_str),height = 6.5,width = 5.5)
 
 all_heatmaps <- list()
 for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T)) {
@@ -1100,7 +1166,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave("figures/mile-vice-heatmap-vc-mo-consensus.pdf",height = 6.5,width = 5.5)
+  ggsave(sprintf("figures/%s/mile-vice-heatmap-vc-mo-consensus.pdf",output_str),height = 6.5,width = 5.5)
 
 
 # virtual cell composition heatmap (class-sorting) ------------------------
@@ -1176,7 +1242,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave("figures/mile-vice-heatmap-vc-consensus-class.pdf",height = 8,width = 6.5)
+  ggsave(sprintf("figures/%s/mile-vice-heatmap-vc-consensus-class.pdf",output_str),height = 8,width = 6.5)
 
 blmt <- full_proportions_cell_type_mo %>%
   select(model_name,task_idx) %>%
@@ -1262,7 +1328,7 @@ for (i in 1:nrow(blmt)) {
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave("figures/mile-vice-heatmap-vc-mo-consensus-class.pdf",height = 8,width = 6.5)
+  ggsave(sprintf("figures/%s/mile-vice-heatmap-vc-mo-consensus-class.pdf",output_str),height = 8,width = 6.5)
 
 # proportion correlations (validation) ------------------------------------
 
@@ -1350,7 +1416,7 @@ comparison_df %>%
   theme(legend.key.size = unit(0.1,"cm"),legend.margin = margin()) + 
   scale_shape(name = "Dataset") + 
   scale_colour_aaas(name = NULL) + 
-  ggsave("figures/mile-vice-proportion-correlations-consensus.pdf",height = 1.5,width = 4)
+  ggsave(sprintf("figures/%s/mile-vice-proportion-correlations-consensus.pdf",output_str),height = 1.5,width = 4)
 
 comparison_df %>%
   mutate(data_type = ifelse(grepl('\\.bc',model_name),'Morphology + B.C.',"Morphology"),
@@ -1371,7 +1437,7 @@ comparison_df %>%
   ylab("Proportion distribution in validation data") + 
   scale_colour_manual(values = c("red4","darkorchid"),guide = F) + 
   theme(legend.key.size = unit(0,"cm")) +
-  ggsave("figures/mile-vice-proportion-correlations-morph-consensus.pdf",
+  ggsave(sprintf("figures/%s/mile-vice-proportion-correlations-morph-consensus.pdf",output_str),
          width = 5,height = 2.5)
 
 comparison_df %>%
@@ -1394,7 +1460,7 @@ comparison_df %>%
   ylab("Proportion distribution in validation data") + 
   scale_colour_manual(values = c("red4","darkorchid"),guide = F) + 
   theme(legend.key.size = unit(0,"cm")) +
-  ggsave("figures/mile-vice-proportion-correlations-morph-disease-detection-consensus.pdf",
+  ggsave(sprintf("figures/%s/mile-vice-proportion-correlations-morph-disease-detection-consensus.pdf",output_str),
          width = 4,height = 2)
 
 comparison_df %>%
@@ -1417,5 +1483,5 @@ comparison_df %>%
   ylab("Proportion distribution in validation data") + 
   scale_colour_manual(values = c("red4","darkorchid"),guide = F) + 
   theme(legend.key.size = unit(0,"cm")) +
-  ggsave("figures/mile-vice-proportion-correlations-morph-bc-consensus.pdf",
+  ggsave(sprintf("figures/%s/mile-vice-proportion-correlations-morph-bc-consensus.pdf",output_str),
          width = 5,height = 2.5)

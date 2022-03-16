@@ -8,6 +8,8 @@ library(WRS2)
 library(ggpubr)
 library(progress)
 library(glmnet)
+library(dunn.test)
+library(caret)
 
 quality_dataset_labels <- read_csv(
   "datasets/blur-quality-net.csv",col_names = c("tile_id","class","blurriness",paste("HIST",seq(0,255))))
@@ -19,14 +21,20 @@ X_norm_params <- list(
   mean = colMeans(X),std = apply(X,2,sd)
 )
 
+require(doMC)
+registerDoMC(cores=4)
 simple_features_model <- cv.glmnet(
   (X - X_norm_params$mean)/(X_norm_params$std),
-  quality_dataset_labels_train$class,family = "binomial",trace.it = T)
+  quality_dataset_labels_train$class,family = "binomial",parallel=T)
 
 X_test <- as.matrix(quality_dataset_labels_test[,3:ncol(quality_dataset_labels_test)])
-assess.glmnet(simple_features_model,
-              newx = (X_test - X_norm_params$mean)/(X_norm_params$std),
-              newy = quality_dataset_labels_test$class)
+confusionMatrix(
+  table(
+    quality_dataset_labels_test$class,
+    predict(simple_features_model,
+            newx = (X_test - X_norm_params$mean)/(X_norm_params$std),type="class")
+  )
+)
 
 quality_dataset_labels_train %>%
   mutate(class = c("Poor","Good")[class+1]) %>%
@@ -65,18 +73,11 @@ all_conditions <- rbind(
            coarse_class = factor(class_conversion[coarse_class],class_conversion))
 )
 
-blood_parameters <- read_csv(
-  "data/blood_count_data.csv",
-  col_types = cols_only(
-    id = col_character(),wbc_ul = col_double(),
-    hb_g_dl = col_double(),plt_ul = col_double())) %>%
-  select(slide_id = id,wbc_ul,hb_g_dl,plt_ul)
-
 fine_to_not_so_fine <- c(
   `Normal` = "Normal",`SF3B1-mutant` = "SF3B1-mutant",
-  `RUNX1-mutant` = "Non-SF3B1-mutant",
-  `SRSF2-mutant` = "Non-SF3B1-mutant",
-  `U2AF1-mutant` = "Non-SF3B1-mutant",
+  `RUNX1-mutant` = "SF3B1-wildtype",
+  `SRSF2-mutant` = "SF3B1-wildtype",
+  `U2AF1-mutant` = "SF3B1-wildtype",
   `Iron deficiency` = "Iron deficiency",
   `Megaloblastic` = "Megaloblastic")
 
