@@ -26,3 +26,5 @@ The script MILe-ViCe (through `train_stack.py`) allows multiple cell datasets to
         --median_impute \
         --min_cells 50 
 ```
+
+If training using `Snakefile` (recommended), it is necessary to have a version of `R` installed with `tidyverse`, `caret` and `pROC`.
