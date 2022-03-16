@@ -63,12 +63,13 @@ if __name__ == "__main__":
     else:
           dev = "cpu"
 
-    with open(args.feature_subset,"r") as o:
-        try:
+
+    try:
+        with open(args.feature_subset,"r") as o:
             feature_subset = [
                 int(x.strip())-1 for x in o.read().strip().split(',')]
-        except:
-            feature_subset = []
+    except:
+        feature_subset = []
     if len(feature_subset) == 0:
         feature_subset = None
 

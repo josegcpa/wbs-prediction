@@ -175,6 +175,37 @@ class GenerateFromDataset:
         return output
 
     def get_moments(self):
+        self.minimum = np.ones(self.n_features) * np.inf
+        self.maximum = np.ones(self.n_features) * -np.inf
+        self.s = np.zeros(self.n_features,dtype=np.float64)
+        self.ss = np.zeros(self.n_features,dtype=np.float64)
+        n = 0
+        for key in self.keys:
+            x = self.all_datasets[key].return_n_cells(
+                self.all_datasets[key].n_cells)
+            n += x.shape[0]
+            m = x.min(axis=0)
+            M = x.max(axis=0)
+            s = x.sum(axis=0)
+            ss = np.sum(x**2,axis=0)
+            # update
+            self.minimum = np.where(m < self.minimum,m,self.minimum)
+            self.maximum = np.where(M > self.maximum,M,self.maximum)
+            self.s += s
+            self.ss += ss
+        self.mean = self.s/n
+        self.var = (self.ss - (self.s**2)/n)/n
+        self.std = np.sqrt(self.var)
+        self.minimum = (self.minimum - self.mean) / self.std
+        self.maximum = (self.maximum - self.mean) / self.std
+
+        self.mean = self.mean[np.newaxis,np.newaxis,:]
+        self.var = self.var[np.newaxis,np.newaxis,:]
+        self.std = self.std[np.newaxis,np.newaxis,:]
+        self.minimum = self.minimum[np.newaxis,np.newaxis,:]
+        self.maximum = self.maximum[np.newaxis,np.newaxis,:]
+
+    def get_moments_old(self):
         big_mat = []
         for key in self.keys:
             big_mat.append(self.all_datasets[key].return_n_cells(

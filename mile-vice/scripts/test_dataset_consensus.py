@@ -151,7 +151,7 @@ if __name__ == "__main__":
                 D_min = np.min(D,axis=1)
                 all_D_min.append(D_min)
         all_D_min = np.stack(all_D_min,axis=1)
-        thr = np.quantile(all_D_min,args.threshold)
+        thr = args.threshold # np.quantile(all_D_min,args.threshold)
         thresholds.append(thr)
         x = np.where(all_D_min <= thr)[0]
         x = [i for i,c in zip(*np.unique(x,return_counts=True)) if c >= 3]

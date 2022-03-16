@@ -16,7 +16,7 @@ def has_bc(wcs):
     else:
         return ""
 
-model_ids = ['full','full_dropout']
+model_ids = ['subset','subset_dropout']
 labels = ['anemia_binary','binary','mds_binary','disease_binary']
 layer_matching = {x:i for i,x in enumerate(labels)}
 so_output = []
@@ -83,8 +83,8 @@ rule test_so:
     shell:
         """
         python3 scripts/test_dataset.py \
-            --dataset_path datasets/wbc_adden_2.h5 \
-            --dataset_path datasets/rbc_adden_2.h5 \
+            --dataset_path datasets/wbc_adden_2_subset.h5 \
+            --dataset_path datasets/rbc_adden_2_subset.h5 \
             --model_path {input.model} \
             --fold {params.fold} \
             --labels_path {input.labels} {params.bc} \
@@ -106,10 +106,10 @@ rule test_so_consensus:
     shell:
         """
         python3 scripts/test_dataset_consensus.py \
-            --dataset_path datasets/wbc_adden_2.h5 \
-            --dataset_path datasets/rbc_adden_2.h5 \
-            --training_dataset_path datasets/wbc.h5 \
-            --training_dataset_path datasets/rbc.h5 \
+            --dataset_path datasets/wbc_adden_2_subset.h5 \
+            --dataset_path datasets/rbc_adden_2_subset.h5 \
+            --training_dataset_path datasets/wbc_subset.h5 \
+            --training_dataset_path datasets/rbc_subset.h5 \
             --model_path {input.model} \
             --fold {params.fold} \
             --labels_path {input.labels} {params.bc} \
@@ -132,8 +132,8 @@ rule test_mo:
     shell:
         """
         python3 scripts/test_dataset.py \
-            --dataset_path datasets/wbc_adden_2.h5 \
-            --dataset_path datasets/rbc_adden_2.h5 \
+            --dataset_path datasets/wbc_adden_2_subset.h5 \
+            --dataset_path datasets/rbc_adden_2_subset.h5 \
             --model_path {input.model} \
             --fold {params.fold} \
             --labels_path {input.labels} {params.bc} --ob {params.layer}\
@@ -156,10 +156,10 @@ rule test_mo_consensus:
     shell:
         """
         python3 scripts/test_dataset_consensus.py \
-            --dataset_path datasets/wbc_adden_2.h5 \
-            --dataset_path datasets/rbc_adden_2.h5 \
-            --training_dataset_path datasets/wbc.h5 \
-            --training_dataset_path datasets/rbc.h5 \
+            --dataset_path datasets/wbc_adden_2_subset.h5 \
+            --dataset_path datasets/rbc_adden_2_subset.h5 \
+            --training_dataset_path datasets/wbc_subset.h5 \
+            --training_dataset_path datasets/rbc_subset.h5 \
             --model_path {input.model} \
             --fold {params.fold} \
             --labels_path {input.labels} {params.bc} --ob {params.layer} \
@@ -175,7 +175,7 @@ rule compare_cells:
         dataset_2=lambda wcs: os.path.join('models',
             cell_comparison_matching[wcs.task_str][1][0])
     output:
-        'cell-comparisons/{task_str}.csv'
+        'cell-comparisons/subset_{task_str}.csv'
     params:
         fold_1=lambda wcs: cell_comparison_matching[wcs.task_str][0][1],
         fold_2=lambda wcs: cell_comparison_matching[wcs.task_str][1][1],
@@ -186,8 +186,8 @@ rule compare_cells:
     shell:
         """
         python3 scripts/compare_cells.py \
-            --dataset_path datasets/wbc.h5 \
-            --dataset_path datasets/rbc.h5 \
+            --dataset_path datasets/wbc_subset.h5 \
+            --dataset_path datasets/rbc_subset.h5 \
             --model_path_1 {input.dataset_1} --fold_1 {params.fold_1} \
             --model_path_2 {input.dataset_2} --fold_2 {params.fold_2} \
             --ob {params.obj} \

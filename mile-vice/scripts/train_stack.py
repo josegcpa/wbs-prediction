@@ -3,6 +3,7 @@ import argparse
 import sys
 import torch
 import time
+from tqdm import tqdm
 from sklearn.model_selection import StratifiedKFold
 
 from networks import *
@@ -221,6 +222,7 @@ if __name__ == "__main__":
         min_lr_counter = 0
         print("Training now...")
         times = []
+        TT = tqdm()
         while True:
             if S > args.number_of_steps:
                 break
@@ -291,6 +293,7 @@ if __name__ == "__main__":
                 if min_lr_counter > 250:
                     break
             S += 1
+            TT.update()
 
         stacked_network.train(False)
 
