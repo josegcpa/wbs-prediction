@@ -19,8 +19,7 @@ do
         -m ) MODE=$2; shift 2 ;;
         -h )
             echo "arguments (required):
-                -i : input directory
-                -f : file extension (i.e. ndpi, svs, tiff, etc...)
+                -i : input slide
                 -o : output directory"
             echo ""
             echo "arguments (optional):
@@ -31,7 +30,7 @@ do
                 -m : mode (local or cluster (only LSF supported))"
             echo ""
             echo "example:
-                sh pipeline.sh -i slide_dir -o output_dir -f tiff -r 1.1"
+                sh run-slide.sh -i slide_dir -o output_dir -f tiff -r 1.1"
             echo ""
             exit
         ;;

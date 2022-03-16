@@ -9,8 +9,10 @@ xgb_path = config['xgb_path']
 rescale_factor = config['rescale_factor']
 
 tmp_folder = 'tmp'
-parameter_url = 'https://figshare.com/ndownloader/articles/19164209?private_link=f331c773f4a0770db5da'
-
+if "CKPT_URL" not in os.environ:
+    parameter_url = os.environ["CKPT_URL"]
+else:
+    raise KeyError("CKPT_URL should be defined as an environment variable")
 slide_id = slide_path.split('/')[-1].split('.')[0]
 
 try:
