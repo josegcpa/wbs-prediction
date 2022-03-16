@@ -11,25 +11,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compile cell collections.')
 
     parser.add_argument('--collection_path',dest='collection_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path to folder containing collections")
     parser.add_argument('--pattern',dest='pattern',
-                        action='store',
-                        type=str,
-                        default='wbc*h5')
+                        action='store',type=str,default='wbc*h5',
+                        help="Pattern to be used when globing collections")
     parser.add_argument('--output_path',dest='output_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Output path for compile cell collection")
     parser.add_argument('--no_features',dest='no_features',
-                        action='store_true')
+                        action='store_true',
+                        help="If no features are to be stored")
     parser.add_argument('--simplify_cell_type',dest='simplify_cell_type',
-                        action='store_true')
+                        action='store_true',
+                        help="Virtual cell types are quantized")
     parser.add_argument('--n',dest='n',
-                        action='store',
-                        type=int,
-                        default=50)
+                        action='store',type=int,default=50,
+                        help="Number of cells from each cell collection")
 
     args = parser.parse_args()
 

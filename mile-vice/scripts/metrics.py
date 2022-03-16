@@ -1,6 +1,8 @@
 import torch
 from sklearn import metrics
 
+# Metric functions for MILe-ViCe
+
 def precision(metric_dict):
     tp = metric_dict['tp'].sum(axis=0).float()
     fp = metric_dict['fp'].sum(axis=0).float()

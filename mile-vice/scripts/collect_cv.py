@@ -4,9 +4,10 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Collect metrics.')
 parser.add_argument('--log_files',dest='log_files',
-                    nargs='+')
+                    nargs='+',help="Log files from MILe-ViCe")
 parser.add_argument('--subset',dest='subset',
-                    action='store_true',default='full')
+                    action='store_true',default='full',
+                    help="Whether or not all features are used [full,subset]")
 args = parser.parse_args()
 
 all_csv_files = args.log_files

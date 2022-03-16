@@ -31,31 +31,37 @@ def obtain_model(network_state_dict):
         other_datasets_sizes=[od_features[0]],
         n_classes=n_classes).to(dev)
 
-
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Test virtual cell classifier.')
-
-    parser = argparse.ArgumentParser(description='Predict virtual cell dataset.')
+    parser = argparse.ArgumentParser(
+        description='Compares cells between two models.')
 
     parser.add_argument('--dataset_path',dest='dataset_path',action='append',
-                        type=str,default=None)
+                        type=str,default=None,
+                        help="Paths to datasets")
     parser.add_argument('--model_path_1',dest='model_path_1',action='store',
-                        type=str,default=None)
+                        type=str,default=None,
+                        help="Path for model 1")
     parser.add_argument('--fold_1',dest='fold_1',action='store',
-                        type=int,default=0)
+                        type=int,default=0,
+                        help="Fold for model 1")
     parser.add_argument('--model_path_2',dest='model_path_2',action='store',
-                        type=str,default=None)
+                        type=str,default=None,
+                        help="Path for model 2")
     parser.add_argument('--fold_2',dest='fold_2',action='store',
-                        type=int,default=0)
+                        type=int,default=0,
+                        help="Fold for model 2")
     parser.add_argument('--ob',dest='ob',action='store',
-                        type=int,default=0)
+                        type=int,default=0,
+                        help="Objective for models (if multi-objective)")
     parser.add_argument('--excluded_ids',dest='excluded_ids',
-                        nargs='+',action='store',type=str,default=None)
+                        nargs='+',action='store',type=str,default=None,
+                        help="IDs that should be excluded (separated by spaces)")
     parser.add_argument('--threshold',dest='threshold',
-                        action='store',type=float,default=0.25)
+                        action='store',type=float,default=0.25,
+                        help="Quantile to use for threshold")
     parser.add_argument('--n_cells_consensus',dest='n_cells_consensus',
-                        action='store',type=int,default=250)
+                        action='store',type=int,default=250,
+                        help="Number of cells to use for consensus")
 
     args = parser.parse_args()
 
@@ -66,15 +72,11 @@ if __name__ == "__main__":
 
     n_d = len(args.dataset_path)
 
-    # print("loading labels")
-
-    # print("loading state dict and inferring network architecture from it")
     state_dict_1 = torch.load(args.model_path_1,map_location='cpu')
     network_state_dict_1 = state_dict_1[args.fold_1]['network']
     state_dict_2 = torch.load(args.model_path_2,map_location='cpu')
     network_state_dict_2 = state_dict_2[args.fold_2]['network']
 
-    # print("assembling network and opening files, loading data moments")
     stacked_network_1 = obtain_model(network_state_dict_1)
     stacked_network_1.load_state_dict(network_state_dict_1)
     stacked_network_1.train(False)
@@ -87,14 +89,12 @@ if __name__ == "__main__":
     means_2 = [np.squeeze(x) for x in state_dict_2[args.fold_2]['means']]
     stds_2 = [np.squeeze(x) for x in state_dict_2[args.fold_2]['stds']]
 
-    # print("loading datasets")
     all_datasets = [GenerateFromDataset(x,auto=False) for x in args.dataset_path]
 
     all_sets = [set(x.keys) for x in all_datasets]
     all_keys = list(set.intersection(*all_sets))
     all_keys = [k for k in all_keys if k not in args.excluded_ids]
 
-    # print("building consensus set of cells")
     thr = args.threshold
     masks = []
     cells = []

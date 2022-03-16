@@ -12,49 +12,43 @@ from metrics import *
 
 if __name__ == "__main__":
     print("Reading cmd line arguments...")
-    parser = argparse.ArgumentParser(description='Test virtual cell classifier.')
+    parser = argparse.ArgumentParser(
+        description='''Predicts VCT for files from pipeline_tf2 output,
+        gathers image of each cell from slide and coordinates''')
 
     parser.add_argument('--network_idx',dest='network_idx',
-                        action='store',
-                        type=int,
-                        default=0)
+                        action='store',type=int,default=0,
+                        help="Cell type index (wbc=0,rbc=1)")
     parser.add_argument('--slide_path',dest='slide_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path for the slide")
     parser.add_argument('--aggregates_path',dest='aggregates_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path for hdf5 containing cell characteristics")
     parser.add_argument('--segmented_path',dest='segmented_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path for hdf5 containing cell segmentations")
     parser.add_argument('--model_path',dest='model_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path for MILe-ViCe model")
     parser.add_argument('--output_path',dest='output_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="HDF5 output path for VCT class + images")
     parser.add_argument('--fold',dest='fold',
-                        action='store',
-                        type=int,
-                        default=0)
+                        action='store',type=int,default=0,
+                        help="Model fold")
     parser.add_argument('--subset',dest='subset',
-                        action='store',
-                        type=int,
-                        default=100)
+                        action='store',type=int,default=100,
+                        help="How many cells to subset")
     parser.add_argument('--flip',dest='flip',
-                        default=False,
-                        action='store_true')
+                        default=False,action='store_true',
+                        help="Whether the coordinates should be flipped")
     parser.add_argument('--feature_subset',dest='feature_subset',
-                        default=None,
-                        action='store')
+                        default=None,action='store',
+                        help="File to feature subset")
     parser.add_argument('--size',dest='size',type=int,
-                        default=None,
-                        action='store')
+                        default=None,action='store',
+                        help="Size of the images to be stored")
 
     args = parser.parse_args()
 

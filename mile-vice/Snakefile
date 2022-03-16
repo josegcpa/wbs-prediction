@@ -57,14 +57,14 @@ rule get_vcq_layers:
         expand("models/"+CV+".multi_class.{nvc}",nvc=NVC_MO),
         expand("models/"+CV+".multi_class.{nvc}.bc",nvc=NVC_MO),
         best_model_file="best_models/best_models_" + TYPE
-    
+
     output:
         "best_models/best_vcq_layers_" + TYPE
-    
+
     shell:
         """
         for model in $(cat {input.best_model_file})
-        do 
+        do
             python3 scripts/get_vcq_layers.py \
             --model_path $(echo $model | cut -d ',' -f 1) \
             --fold $(echo $model | cut -d ',' -f 2)

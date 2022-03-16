@@ -4,6 +4,9 @@ import h5py
 import numpy as np
 from tqdm import tqdm
 
+# Used to aggregate the datasets obtained using the pipeline
+# described in pipeline_tf2
+
 try:
     os.makedirs('datasets')
 except:

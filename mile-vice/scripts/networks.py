@@ -1,5 +1,7 @@
 import torch
 
+# MILe-ViCe model specification
+
 class VirtualCellClassifier(torch.nn.Module):
     def __init__(self,
                  n_input_features,

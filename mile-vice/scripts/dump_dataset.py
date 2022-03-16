@@ -3,9 +3,11 @@ import sys
 import numpy as np
 from tqdm import tqdm
 
-H5_FILE = sys.argv[1]
-OUTPUT_FILE = sys.argv[2]
-SUBSET = int(sys.argv[3])
+# Dumps a MILe-ViCe dataset to an output file as a CSV format
+
+H5_FILE = sys.argv[1] # path to hdf5 file
+OUTPUT_FILE = sys.argv[2] # path to output file
+SUBSET = int(sys.argv[3]) # how many cells should be considered by group
 
 O = open(OUTPUT_FILE,'w')
 all_cell_sizes = []

@@ -14,22 +14,30 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Predict virtual cell dataset.')
 
     parser.add_argument('--dataset_path',dest='dataset_path',action='append',
-                        type=str,default=None)
+                        type=str,default=None,
+                        help="Dataset used for validation"))
     parser.add_argument('--other_dataset_path',dest='other_dataset_path',
                         action='append',
-                        type=str,default=[])
+                        type=str,default=[],
+                        help="Path for tabular datasets")
     parser.add_argument('--model_path',dest='model_path',action='store',
-                        type=str,default=None)
+                        type=str,default=None,
+                        help="Path for MILe-ViCe model")
     parser.add_argument('--fold',dest='fold',action='store',
-                        type=int,default=0)
+                        type=int,default=0,
+                        help="Model fold")
     parser.add_argument('--ob',dest='ob',action='store',
-                        type=int,default=0)
+                        type=int,default=0,
+                        help="Objective index (if MILe-ViCe is multi-objective)")
     parser.add_argument('--subset',dest='subset',action='store',
-                        type=int,default=500)
+                        type=int,default=500,
+                        help="Subset cells for prediction")
     parser.add_argument('--labels_path',dest='labels_path',
-                        action='store',type=str,default=None)
+                        action='store',type=str,default=None,
+                        help="Path for labels")
     parser.add_argument('--excluded_ids',dest='excluded_ids',
-                        nargs='+',action='store',type=str,default=None)
+                        nargs='+',action='store',type=str,default=None,
+                        help="Excluded dataset IDs (separated by spaces)")
 
     args = parser.parse_args()
 

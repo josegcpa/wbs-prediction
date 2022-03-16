@@ -10,33 +10,43 @@ from data_generator import *
 from metrics import *
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Test virtual cell classifier.')
 
-    parser = argparse.ArgumentParser(description='Predict virtual cell dataset.')
+    parser = argparse.ArgumentParser(
+        description='Tests MILe-ViCe models with consensual VCTs.')
 
     parser.add_argument('--training_dataset_path',dest='training_dataset_path',
-                        action='append',type=str,default=None)
+                        action='append',type=str,default=None,
+                        help="Dataset used for training (to calculate consensus)")
     parser.add_argument('--dataset_path',dest='dataset_path',action='append',
-                        type=str,default=None)
+                        type=str,default=None,
+                        help="Dataset used for validation")
     parser.add_argument('--other_dataset_path',dest='other_dataset_path',
-                        action='append',
-                        type=str,default=[])
+                        action='append',type=str,default=[],
+                        help="Path for tabular datasets")
     parser.add_argument('--model_path',dest='model_path',action='store',
-                        type=str,default=None)
+                        type=str,default=None,
+                        help="Path for MILe-ViCe model")
     parser.add_argument('--fold',dest='fold',action='store',
-                        type=int,default=0)
+                        type=int,default=0,
+                        help="Model fold")
     parser.add_argument('--ob',dest='ob',action='store',
-                        type=int,default=0)
+                        type=int,default=0,
+                        help="Objective index (if MILe-ViCe is multi-objective)")
     parser.add_argument('--subset',dest='subset',action='store',
-                        type=int,default=500)
+                        type=int,default=500,
+                        help="Subset cells for prediction")
     parser.add_argument('--labels_path',dest='labels_path',
-                        action='store',type=str,default=None)
+                        action='store',type=str,default=None,
+                        help="Path for labels")
     parser.add_argument('--excluded_ids',dest='excluded_ids',
-                        nargs='+',action='store',type=str,default=None)
+                        nargs='+',action='store',type=str,default=None,
+                        help="Excluded dataset IDs (separated by spaces)")
     parser.add_argument('--threshold',dest='threshold',
-                        action='store',type=float,default=0.25)
+                        action='store',type=float,default=0.25,
+                        help="Threshold for VCT corr. (for consensus)")
     parser.add_argument('--n_cells_consensus',dest='n_cells_consensus',
-                        action='store',type=int,default=250)
+                        action='store',type=int,default=250,
+                        help="Number of cells to calculate consensus")
 
     args = parser.parse_args()
 

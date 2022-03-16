@@ -6,12 +6,11 @@ import numpy as np
 import re
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Compile cell collections.')
+    parser = argparse.ArgumentParser(description='Compile cell proportions.')
 
     parser.add_argument('--collection_path',dest='collection_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Folder where cell collections are stored")
 
     args = parser.parse_args()
 

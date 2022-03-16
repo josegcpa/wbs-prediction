@@ -3,6 +3,8 @@ import sys
 import numpy as np
 from tqdm import tqdm
 
+# calculates a few statistics for each dataset
+
 H5_FILE = sys.argv[1]
 OUTLIERS_FILE = sys.argv[2]
 

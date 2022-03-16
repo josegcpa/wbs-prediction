@@ -10,16 +10,15 @@ from data_generator import *
 from metrics import *
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Test virtual cell classifier.')
+    parser = argparse.ArgumentParser(
+        description='Get layers corresponding to VCT classifiers.')
 
     parser.add_argument('--model_path',dest='model_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path to MILe-ViCe model")
     parser.add_argument('--fold',dest='fold',
-                        action='store',
-                        type=int,
-                        default=0)
+                        action='store',type=int,default=0,
+                        help="Model fold")
 
     args = parser.parse_args()
 

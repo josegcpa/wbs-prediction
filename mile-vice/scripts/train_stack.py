@@ -12,77 +12,63 @@ from metrics import *
 
 if __name__ == "__main__":
     print("Reading cmd line arguments...")
-    parser = argparse.ArgumentParser(description='Test virtual cell classifier.')
+    parser = argparse.ArgumentParser(
+        description='Train MILe-ViCe.')
 
     parser.add_argument('--n_virtual_cells',dest='n_virtual_cells',
-                        action='store',
-                        type=int,
-                        default=20)
+                        action='store',type=int,default=20,
+                        help="Number of virtual cells")
     parser.add_argument('--n_classes',dest='n_classes',
-                        action='store',
-                        type=int,
-                        default=2)
+                        action='store',type=int,default=2,
+                        help="Number of classes")
     parser.add_argument('--dataset_path',dest='dataset_path',
-                        action='append',
-                        type=str,
-                        default=None)
+                        action='append',type=str,default=None,
+                        help="Path to HDF5 datasets")
     parser.add_argument('--other_dataset_path',dest='other_dataset_path',
-                        action='append',
-                        type=str,
-                        default=None)
+                        action='append',type=str,default=None,
+                        help="Path to tabular datasets")
     parser.add_argument('--labels_path',dest='labels_path',
-                        action='append',
-                        type=str,
-                        default=None)
+                        action='append',type=str,default=None,
+                        help="Path to labels")
     parser.add_argument('--number_of_steps',dest='number_of_steps',
-                        action='store',
-                        type=int,
-                        default=10000)
+                        action='store',type=int,default=10000,
+                        help="Number of training steps")
     parser.add_argument('--batch_size',dest='batch_size',
-                        action='store',
-                        type=int,
-                        default=32)
+                        action='store',type=int,default=32,
+                        help="Batch size (slides per batch)")
     parser.add_argument('--number_of_cells',dest='number_of_cells',
-                        action='store',
-                        type=int,
-                        default=500)
+                        action='store',type=int,default=500,
+                        help="Number of cells per slide")
     parser.add_argument('--learning_rate',dest='learning_rate',
-                        action='store',
-                        type=float,
-                        default=0.0001)
+                        action='store',type=float,default=0.0001,
+                        help="Learning rate")
     parser.add_argument('--weight_decay',dest='weight_decay',
-                        action='store',
-                        type=float,
-                        default=0.005)
+                        action='store',type=float,default=0.005,
+                        help="Weight decay (for AdamW)")
     parser.add_argument('--dropout_rate',dest='dropout_rate',
-                        action='store',
-                        type=float,
-                        default=0.)
+                        action='store',type=float,default=0.,
+                        help="Dropout rate for VCT")
     parser.add_argument('--n_folds',dest='n_folds',
-                        action='store',
-                        type=int,
-                        default=1)
+                        action='store',type=int,default=1,
+                        help="Number of folds")
     parser.add_argument('--model_path',dest='model_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path to the output model")
     parser.add_argument('--random_state',dest='random_state',
-                        action='store',
-                        type=int,
-                        default=1)
+                        action='store',type=int,default=1,
+                        help="Random state (seed)")
     parser.add_argument('--excluded_ids',dest='excluded_ids',
-                        action='store',nargs='+',
-                        type=str,
-                        default=[])
+                        action='store',nargs='+',type=str,default=[],
+                        help="Excluded slided IDs (separated by spaces)")
     parser.add_argument('--median_impute',dest='median_impute',
-                        action='store_true',
-                        default=False)
+                        action='store_true',default=False,
+                        help="median-imputes tabular dataset missing data")
     parser.add_argument('--range',dest='range',
-                        action='store_true',
-                        default=False)
+                        action='store_true',default=False,
+                        help="[deprecated, please ignore]")
     parser.add_argument('--min_cells',dest='min_cells',
-                        action='store',type=int,
-                        default=None)
+                        action='store',type=int,default=None,
+                        help="Minimum number of cells per slide")
 
     args = parser.parse_args()
 

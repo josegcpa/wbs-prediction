@@ -4,6 +4,8 @@ import os
 import numpy as np
 from multiprocessing import Queue,Process
 
+# Contains scripts for data generation
+
 class HDF5Dataset:
     def __init__(self,F,feature_subset=None):
         self.F = F

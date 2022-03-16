@@ -21,15 +21,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Get virtual cell type examples.')
 
     parser.add_argument('--N_examples',dest='N_examples',
-                        action='store',type=int,default=10)
+                        action='store',type=int,default=10,
+                        help="Number of sqrt(examples)")
     parser.add_argument('--size_wbc',dest='size_wbc',
-                        action='store',type=int,default=128)
+                        action='store',type=int,default=128,
+                        help="Size of WBC images")
     parser.add_argument('--size_rbc',dest='size_rbc',
-                        action='store',type=int,default=64)
+                        action='store',type=int,default=64,
+                        help="Size of RBC images")
     parser.add_argument('--dataset_id',dest='dataset_id',
-                        action='store',type=str,default=None)
+                        action='store',type=str,default=None,
+                        help="ID of the dataset (used for output)")
     parser.add_argument('--pattern',dest='pattern',
-                        action='store',type=str,default="*")
+                        action='store',type=str,default="*",
+                        help="Pattern for collection globing")
     args = parser.parse_args()
 
     try: os.makedirs("virtual_cell_examples")

@@ -3,6 +3,8 @@ import sys
 import numpy as np
 from tqdm import tqdm
 
+# defines outliers for MILe-ViCe datasets
+
 H5_FILE = sys.argv[1]
 
 all_cells = []
