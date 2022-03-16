@@ -1,0 +1,118 @@
+
+import os
+
+normal_scripts = [
+    "A-0-cohort-demographics-blood-counts.R",
+    "A-1-describe-cell-populations.R",
+    "A-2-qc-analysis.R",
+    "A-3-u-net-metrics.R",
+    "B-0-feature-viz.R",
+    "B-1-glmnet.R",
+    "C-0-u-map.R",
+    "C-3-annotated-cell-prediction-analysis.R"
+    ]
+
+model_specific_scripts = [
+    "C-1-analyse-metrics.R",
+    "C-2-virtual-cell-analysis.R",
+    "C-2-virtual-cell-analysis-consensus.R",
+    "C-2-vc-proportions-variance.R",
+    "C-4-analyse-metrics-validation-consensus.R",
+    "C-4-analyse-metrics-validation.R"
+]
+
+model_ids = ['full','full_dropout','subset','subset_dropout']
+
+ckpts = [os.path.join('checkpoints',x + '.ckpt') for x in normal_scripts]
+ckpts.append(os.path.join('checkpoints','C-3-annotated-cell-prediction-analysis.R'+'.ckpt'))
+ckpts_model = []
+for model_id in model_ids:
+    for x in model_specific_scripts:
+        ckpts_model.append(os.path.join('checkpoints',x+'.'+model_id+'.ckpt'))
+
+try: os.makedirs('checkpoints')
+except: pass
+
+print(ckpts)
+
+rule all:
+    input:
+        ckpts,ckpts_model
+
+rule run_A:
+    input:
+        'A-{script_tag}'
+    output:
+        'checkpoints/A-{script_tag}.ckpt'
+    shell:
+        """
+        Rscript {input} && touch {output}
+        """
+
+rule run_B:
+    input:
+        [x for x in ckpts if x.split(os.sep)[1][0] == 'A'],
+        script='B-{script_tag}'
+    output:
+        'checkpoints/B-{script_tag}.ckpt'
+    shell:
+        """
+        Rscript {input.script} && touch {output}
+        """
+
+rule run_C_0:
+    input:
+        [x for x in ckpts if x.split(os.sep)[1][0] == 'B'],
+        script="C-0-u-map.R",
+    output:
+        "checkpoints/C-0-u-map.R.ckpt",
+    shell:
+        """
+        Rscript {input.script} && touch {output}
+        """
+
+rule run_C_1:
+    input:
+        [x for x in ckpts if x.split(os.sep)[1][0] == 'B'],
+        script="C-1-analyse-metrics.R"
+    output:
+        "checkpoints/C-1-analyse-metrics.R.{model_id}.ckpt"
+    shell:
+        """
+        Rscript {input.script} {wildcards.model_id} && touch {output}
+        """
+
+rule run_C_2:
+    input:
+        [x for x in ckpts if x.split(os.sep)[1][0] == 'B'],
+        "checkpoints/C-1-analyse-metrics.R.{model_id}.ckpt",
+        script="C-2-{model_spec}.R"
+    output:
+        "checkpoints/C-2-{model_spec}.R.{model_id}.ckpt"
+    shell:
+        """
+        Rscript {input.script} {wildcards.model_id} && touch {output}
+        """
+
+rule run_C_3:
+    input:
+        [x for x in ckpts if x.split(os.sep)[1][0] == 'B'],
+        script="C-3-annotated-cell-prediction-analysis.R"
+    output:
+        "checkpoints/C-3-annotated-cell-prediction-analysis.R.ckpt"
+    shell:
+        """
+        Rscript {input.script} && touch {output}
+        """
+
+rule run_C_4:
+    input:
+        [x for x in ckpts if x.split(os.sep)[1][0] == 'B'],
+        "checkpoints/C-1-analyse-metrics.R.{model_id}.ckpt",
+        script="C-4-{model_spec}.R"
+    output:
+        "checkpoints/C-4-{model_spec}.R.{model_id}.ckpt"
+    shell:
+        """
+        Rscript {input.script} {wildcards.model_id} && touch {output}
+        """
