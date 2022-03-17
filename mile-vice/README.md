@@ -27,4 +27,4 @@ The script MILe-ViCe (through `train_stack.py`) allows multiple cell datasets to
         --min_cells 50 
 ```
 
-If training using `Snakefile` (recommended), it is necessary to have a version of `R` installed with `tidyverse`, `caret` and `pROC`.
+If training using `Snakefile` (recommended), it is necessary to have a version of `R` installed (v3.6.1 was used in this work) with `tidyverse==1.3.1`, `caret==6.0-83` and `pROC==1.18.0`.
