@@ -1,3 +1,7 @@
+"""
+Functions to analyse the colour distribution of objects
+"""
+
 import numpy as np
 import cv2
 from shape_analysis import undersample,inv_fft,fourier_complexity

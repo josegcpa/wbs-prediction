@@ -1,3 +1,13 @@
+"""
+Generates example images of the morphometric feature distribution.
+Each feature is described by a given number of quantiles, with
+images corresponding to each quantile from lowest (left) to
+highest (right)
+
+Usage:
+    python3 get_feature_images_from_examples.py --help
+"""
+
 import argparse
 import h5py
 import numpy as np
@@ -23,24 +33,21 @@ def pad_to_size(image,size):
     return image
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Get cell feature examples.')
+    parser = argparse.ArgumentParser(
+        description='Get cell feature examples.')
 
     parser.add_argument('--dataset',dest='dataset',
-                        action='store',
-                        type=str,choices=["MLL","AC2"],
-                        default="MLL")
+                        action='store',type=str,choices=["MLL","AC2"],
+                        default="MLL",help="Dataset ID")
     parser.add_argument('--cell_type',dest='cell_type',
-                        action='store',
-                        type=str,choices=["WBC","RBC"],
-                        default="WBC")
+                        action='store',type=str,choices=["WBC","RBC"],
+                        default="WBC",help="Cell type")
     parser.add_argument('--N_examples',dest='N_examples',
-                        action='store',
-                        type=int,
-                        default=10)
+                        action='store',type=int,default=10,
+                        help="No. of cells per quantile")
     parser.add_argument('--N_quantiles',dest='N_quantiles',
-                        action='store',
-                        type=int,
-                        default=10)
+                        action='store',type=int,default=10,
+                        help="Number of sampled quantiles")
 
     args = parser.parse_args()
 

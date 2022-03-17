@@ -1,27 +1,31 @@
+"""
+Generate examples of cells in an HDF5 format.
+
+Usage:
+    python3 get_examples.py --help
+"""
+
 import argparse
 import numpy as np
 import h5py
 from tqdm import tqdm
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Get cell examples.')
+    parser = argparse.ArgumentParser(
+        description='Get cell examples.')
 
     parser.add_argument('--aggregates_path',dest='aggregates_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path to cell characteristics HDF5")
     parser.add_argument('--segmented_path',dest='segmented_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path to segmented cells HDF5")
     parser.add_argument('--output_path',dest='output_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path to output")
     parser.add_argument('--subset',dest='subset',
-                        action='store',
-                        type=int,
-                        default=None)
+                        action='store',type=int,default=None,
+                        help="No. of cells in each cell collection")
 
     args = parser.parse_args()
 

@@ -1,3 +1,12 @@
+"""
+Aggregates quality control CSV files to an HDF5 containing quality maps
+(i.e. 2-dimensional arrays where each cell corrersponds to a tile in 
+the figure and its corresponding probability of being of good quality)
+
+Usage:
+    python3 build-quality-maps.py --help
+"""
+
 import os
 import argparse
 import numpy as np
@@ -6,10 +15,9 @@ from glob import glob
 from tqdm import tqdm
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         prog = 'build-quality-maps.py',
-        description = 'aggregates qc as slide maps')
+        description = 'Aggregates quality control CSVs as quality arrays')
 
     parser.add_argument('--input_path',dest='input_path',
                         action='store',default=None,

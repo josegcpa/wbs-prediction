@@ -1,3 +1,10 @@
+"""
+Predicts which tiles are of good quality in WBS.
+
+Usage:
+    python3 quality_control.py --help
+"""
+
 import argparse
 from tqdm import tqdm
 import tensorflow as tf
@@ -10,7 +17,8 @@ from image_generator import *
 n_channels = 3
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Trains a feature-aware normalization model.')
+    parser = argparse.ArgumentParser(
+        description='Predicts which tiles are of good quality in WBS.')
 
     parser.add_argument('--slide_path',dest='slide_path',
                         action='store',type=str,default=None,

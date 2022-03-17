@@ -1,15 +1,14 @@
+"""
+Set of functions used to perform data augmentation on Tensorflow.
+"""
+
 from math import pi
 import tensorflow as tf
 import cv2
 
 from albumentations import ElasticTransform
 
-"""
-Set of functions used to perform data augmentation on tf.
-"""
-
 class ImageAugmenter:
-
     def __init__(self,
                  brightness_max_delta=16. / 255.,
                  saturation_lower=0.8,

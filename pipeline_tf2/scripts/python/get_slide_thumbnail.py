@@ -1,3 +1,10 @@
+"""
+Generates a slide thumbnail from a histopathology slide.
+
+Usage:
+    python3 get_slide_thumbnail.py --help
+"""
+
 import argparse
 import numpy as np
 from skimage import filters
@@ -7,12 +14,15 @@ from PIL import Image
 from image_generator import image_generator_slide
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Get cell examples.')
+    parser = argparse.ArgumentParser(
+        description='Get a smaller version of a slide.')
 
     parser.add_argument('--slide_path',dest='slide_path',
-                        action='store',type=str,default=None)
+                        action='store',type=str,default=None,
+                        help="Path to slide")
     parser.add_argument('--output_path',dest='output_path',
-                        action='store',type=str,default=None)
+                        action='store',type=str,default=None,
+                        help="Path to output thumbnail")
     args = parser.parse_args()
 
     sigma = 3

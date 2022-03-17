@@ -1,3 +1,8 @@
+"""
+Deep learning/TF-related operations for U-Net.
+More details in https://github.com/josegcpa/u-net-tf2
+"""
+
 import os
 import numpy as np
 from math import inf
@@ -10,9 +15,6 @@ from PIL import Image
 import tensorflow as tf
 from tensorflow import keras
 
-"""
-Deep learning/TF-related operations.
-"""
 
 def safe_log(tensor):
     """

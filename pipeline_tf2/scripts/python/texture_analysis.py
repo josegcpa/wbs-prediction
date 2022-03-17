@@ -1,3 +1,7 @@
+"""
+Set of functions to characterise texture.
+"""
+
 import numpy as np
 from skimage.feature import greycoprops
 from skimage.feature import greycomatrix

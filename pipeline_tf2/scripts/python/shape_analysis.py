@@ -1,5 +1,5 @@
 """
-Set of functions described in https://hal.archives-ouvertes.fr/hal-00446037/document
+Set of functions to characterise shape.
 """
 
 from math import pi

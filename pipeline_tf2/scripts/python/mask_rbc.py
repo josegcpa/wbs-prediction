@@ -1,3 +1,7 @@
+"""
+Functions for RBC masking
+"""
+
 from math import pi
 from glob import glob
 from itertools import permutations

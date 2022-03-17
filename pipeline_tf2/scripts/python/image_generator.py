@@ -1,3 +1,7 @@
+"""
+Functions and classes for tile generators from histopathology slides
+"""
+
 import numpy as np
 import openslide
 from openslide import OpenSlideError

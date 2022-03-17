@@ -1,3 +1,7 @@
+"""
+Convenience script for masked image analysis.
+"""
+
 from masked_image_analysis import wrapper
 from masked_image_analysis import wrapper_single_image
 from masked_image_analysis import wrapper_single_image_separate

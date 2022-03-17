@@ -1,3 +1,10 @@
+"""
+Script to segment WBC and RBC in a whole blood slide from a quality CSV.
+
+Usage:
+    python3 segment_slide_wbc_rbc.py --help
+"""
+
 import numpy as np
 import argparse
 import h5py
@@ -11,6 +18,7 @@ from tqdm import tqdm
 from tensorflow.python.framework.errors_impl import InvalidArgumentError
 
 import tensorflow as tf
+
 # prevents greedy memory allocation
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
@@ -286,88 +294,80 @@ def refine_prediction_rbc(image,mask):
 
 from mask_rbc import wraper as mask_rbc
 
-parser = argparse.ArgumentParser(
-      prog = 'segment_slide_wbc_rbc.py',
-      description = 'Segments RBC and WBC in a slide given a quality CSV.'
-)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        prog = 'segment_slide_wbc_rbc.py',
+        description = 'Segments RBC and WBC in a slide given a quality CSV.')
 
-parser.add_argument('--csv_path',dest='csv_path',
-                    action='store',
-                    default=None,
-                    help='Path to CSV file with the quality file.')
-parser.add_argument('--slide_path',dest='slide_path',
-                    action='store',
-                    default=None)
-parser.add_argument('--unet_checkpoint_path',dest='unet_checkpoint_path',
-                    action='store',
-                    default=None,
-                    help='Path to U-Net checkpoint.')
-parser.add_argument('--depth_mult',dest='depth_mult',
-                    action='store',
-                    type=float,
-                    default=1.0,
-                    help='Depth of the U-Net.')
-parser.add_argument('--wbc_output_path',dest='wbc_output_path',
-                    action='store',
-                    default=None,
-                    help='Output path for the WBC hdf5 file.')
-parser.add_argument('--rbc_output_path',dest='rbc_output_path',
-                    action='store',
-                    default=None,
-                    help='Output path for the RBC hdf5 file.')
-parser.add_argument('--rescale_factor',dest='rescale_factor',
-                    action='store',
-                    type=float,
-                    default=1,
-                    help='Factor to resize cells (due to different mpp).')
+    parser.add_argument('--csv_path',dest='csv_path',
+                        action='store',default=None,
+                        help='Path to CSV file with the quality file.')
+    parser.add_argument('--slide_path',dest='slide_path',
+                        action='store',default=None,
+                        help="Path to whole blood slide")
+    parser.add_argument('--unet_checkpoint_path',dest='unet_checkpoint_path',
+                        action='store',default=None,
+                        help='Path to U-Net checkpoint.')
+    parser.add_argument('--depth_mult',dest='depth_mult',
+                        action='store',type=float,default=1.0,
+                        help='Depth of the U-Net.')
+    parser.add_argument('--wbc_output_path',dest='wbc_output_path',
+                        action='store',default=None,
+                        help='Output path for the WBC hdf5 file.')
+    parser.add_argument('--rbc_output_path',dest='rbc_output_path',
+                        action='store',default=None,
+                        help='Output path for the RBC hdf5 file.')
+    parser.add_argument('--rescale_factor',dest='rescale_factor',
+                        action='store',type=float,default=1,
+                        help='Factor to resize cells (due to different mpp).')
 
-args = parser.parse_args()
+    args = parser.parse_args()
 
-h,w,extra = 512,512,128
-new_h,new_w = h+extra,w+extra
+    h,w,extra = 512,512,128
+    new_h,new_w = h+extra,w+extra
 
-igwq = ImageGeneratorWithQueue(args.slide_path,args.csv_path,
-                               extra_padding=extra//2,
-                               maxsize=25)
-igwq.start()
+    igwq = ImageGeneratorWithQueue(args.slide_path,args.csv_path,
+                                extra_padding=extra//2,
+                                maxsize=25)
+    igwq.start()
 
-# instantiate U-Net and load it
-u_net = UNet(depth_mult=args.depth_mult,padding='SAME',
-             factorization=False,n_classes=2,
-             dropout_rate=0,squeeze_and_excite=False)
-u_net.load_weights(args.unet_checkpoint_path)
-u_net.trainable = False
-u_net.make_predict_function()
+    # instantiate U-Net and load it
+    u_net = UNet(depth_mult=args.depth_mult,padding='SAME',
+                factorization=False,n_classes=2,
+                dropout_rate=0,squeeze_and_excite=False)
+    u_net.load_weights(args.unet_checkpoint_path)
+    u_net.trainable = False
+    u_net.make_predict_function()
 
-wbc_process = WBCProcess(args.wbc_output_path,h,w,extra)
-wbc_process.init_hdf5()
-rbc_process = RBCProcess(args.rbc_output_path,h,w,extra)
-rbc_process.init_hdf5()
+    wbc_process = WBCProcess(args.wbc_output_path,h,w,extra)
+    wbc_process.init_hdf5()
+    rbc_process = RBCProcess(args.rbc_output_path,h,w,extra)
+    rbc_process.init_hdf5()
 
-def generator():
-    G = igwq.generate()
-    for image,coords in G:
-        image = image / 255.
-        yield np.float32(image),np.array(coords,dtype=np.int32)
+    def generator():
+        G = igwq.generate()
+        for image,coords in G:
+            image = image / 255.
+            yield np.float32(image),np.array(coords,dtype=np.int32)
 
-output_types = (tf.float32,tf.int32)
-output_shapes = (
-    [new_h,new_w,3],[2])
-tf_dataset = tf.data.Dataset.from_generator(
-    generator,output_types=output_types,output_shapes=output_shapes)
-tf_dataset = tf_dataset.batch(2,drop_remainder=True)
-tf_dataset = tf_dataset.prefetch(36)
+    output_types = (tf.float32,tf.int32)
+    output_shapes = (
+        [new_h,new_w,3],[2])
+    tf_dataset = tf.data.Dataset.from_generator(
+        generator,output_types=output_types,output_shapes=output_shapes)
+    tf_dataset = tf_dataset.batch(2,drop_remainder=True)
+    tf_dataset = tf_dataset.prefetch(36)
 
-for image,coords in tqdm(tf_dataset):
-    coords = list(coords.numpy())
-    normalised_input = image
-    for n_i,c in zip(normalised_input,coords):
-        masked_wbc = mask_wbc(n_i,u_net,tta=True)
-        n_i_p = n_i.numpy()
-        n_i_p = np.uint8(n_i_p*255)
+    for image,coords in tqdm(tf_dataset):
+        coords = list(coords.numpy())
+        normalised_input = image
+        for n_i,c in zip(normalised_input,coords):
+            masked_wbc = mask_wbc(n_i,u_net,tta=True)
+            n_i_p = n_i.numpy()
+            n_i_p = np.uint8(n_i_p*255)
 
-        wbc_process.process_element([n_i_p,masked_wbc,args.rescale_factor,c])
-        rbc_process.process_element([n_i_p,args.rescale_factor,c])
+            wbc_process.process_element([n_i_p,masked_wbc,args.rescale_factor,c])
+            rbc_process.process_element([n_i_p,args.rescale_factor,c])
 
-wbc_process.close_hdf5()
-rbc_process.close_hdf5()
+    wbc_process.close_hdf5()
+    rbc_process.close_hdf5()

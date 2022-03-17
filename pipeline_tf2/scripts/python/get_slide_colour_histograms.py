@@ -1,15 +1,22 @@
+"""
+Gets the tile colour histograms of a histopathology slide.
+
+Usage:
+    python3 get_slide_colour_histograms.py --help
+"""
+
 import argparse
 import numpy as np
 
 from image_generator import image_generator_slide
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Get cell examples.')
+    parser = argparse.ArgumentParser(
+        description='Get the colour histogram of all slide tiles.')
 
     parser.add_argument('--slide_path',dest='slide_path',
-                        action='store',
-                        type=str,
-                        default=None)
+                        action='store',type=str,default=None,
+                        help="Path to slide")
     args = parser.parse_args()
 
     for tile,coords in image_generator_slide(args.slide_path,1024,1024):

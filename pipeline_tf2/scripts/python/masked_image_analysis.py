@@ -1,3 +1,9 @@
+"""
+Functions for masked image analysis 
+(uses an image and its mask, retrieves connected objects
+and characterises each object)
+"""
+
 import numpy as np
 import cv2
 import time
