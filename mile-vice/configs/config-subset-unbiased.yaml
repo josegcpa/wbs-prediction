@@ -1,4 +1,0 @@
-wbc_dataset: "datasets/wbc_subset_unbiased.h5"
-rbc_dataset: "datasets/rbc_subset_unbiased.h5"
-cv_string: "cv_subset_unbiased"
-type: "subset_unbiased"

@@ -1,4 +1,0 @@
-wbc_dataset: "datasets/wbc.h5"
-rbc_dataset: "datasets/rbc.h5"
-cv_string: "cv"
-type: "full"
