@@ -19,6 +19,7 @@ do
         -r ) RF=$2; shift 2 ;;
         -m ) MODE=$2; shift 2 ;;
         -h )
+            echo "Batch Haemorasis - blood cell detection pipeline"
             echo "arguments (required):
                 -i : input directory
                 -f : file extension (i.e. ndpi, svs, tiff, etc...)
@@ -47,7 +48,7 @@ OUT=$(echo $OUT | sed "s/\/$//")
 
 echo "detecting all *$FMT slides in $DIR"
 echo "output in $OUT"
-echo "  rescale factor is $RF"
+echo "  rescale factor is $RF "
 
 for slide_path in $DIR/*$FMT
 do
