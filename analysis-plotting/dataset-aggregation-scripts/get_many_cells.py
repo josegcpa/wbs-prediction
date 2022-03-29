@@ -9,6 +9,7 @@ import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--path',dest='path',action='store',type=str)
+parser.add_argument('--N',dest='N',action='store',type=int,default=100)
 
 args = parser.parse_args()
 
@@ -30,7 +31,9 @@ for hdf5_file in tqdm(all_hdf5):
     with h5py.File(hdf5_file,'r') as F:
         cells = F['cells']
         cell_keys = list(cells.keys())
-        key_subset = np.random.choice(cell_keys,50,replace=False)
+        if args.N > len(cell_keys):
+            args.N = len(cell_keys)
+        key_subset = np.random.choice(cell_keys,args.N,replace=False)
         for k in key_subset:
             ct = np.argmax(cells[k]['cell_type'])
             features = ','.join([str(x) for x in cells[k]['features'][()]])

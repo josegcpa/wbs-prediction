@@ -171,7 +171,7 @@ best_vcq_subset <- rbind(
 
 # rbc data-processing -----------------------------------------------------
 
-rbc_cells <- list.files("datasets/many-cells/",pattern = "^rbc-cv_subset\\..*",
+rbc_cells <- list.files("datasets/many-cells/",pattern = "^rbc-cv_subset\\..*csv",
                         full.names = T) %>%
   lapply(read_csv,col_names = F) %>%
   do.call(what = rbind)
@@ -207,11 +207,12 @@ rbc_feature_matrix <- rbc_cells_subset_long %>%
   na.omit()
 
 M <- rbc_feature_matrix[,7:ncol(rbc_feature_matrix)]
-rbc_feature_umap <- umap(M,min_dist = 0.9,verbose=T)
+rbc_feature_umap <- umap(M,min_dist = 0.9,n_neighbors=50,verbose=T)
 rbc_feature_umap_data <- cbind(rbc_feature_matrix[,1:6],rbc_feature_umap$layout)
 
 rbc_feature_matrix_ <- cbind(rbc_feature_matrix[,1:6],M)
 rbc_vc_means <- rbc_feature_matrix_ %>%
+  subset(grepl("multi",model_name)) %>%
   select(-unique_idx,-slide_id,-fine_class,-coarse_class) %>% 
   group_by(model_name,virtual_cell_type) %>% 
   summarise_all(.funs = mean)
@@ -225,7 +226,7 @@ rbc_vc_centers_data <- cbind(
 
 # wbc data-processing -----------------------------------------------------
 
-wbc_cells <- list.files("datasets/many-cells/",pattern = "^wbc-cv_subset\\..*",
+wbc_cells <- list.files("datasets/many-cells/",pattern = "^wbc-cv_subset\\..*csv",
                         full.names = T) %>%
   lapply(read_csv,col_names = F) %>%
   do.call(what = rbind)
@@ -233,7 +234,7 @@ wbc_cells_subset <- wbc_cells[sample(nrow(wbc_cells),size = N_points,replace = F
 colnames(wbc_cells_subset)[1:4] <- c("model_name","slide_id","cell_type",
                                      "virtual_cell_type")
 colnames(wbc_cells_subset)[5:ncol(wbc_cells_subset)] <- c(features_all,features_nuclear)[
-  unlist(read.csv("data_output/scripts/wbc_feature_subset",header=F))]
+  unlist(read.csv("data_output/wbc_feature_subset",header=F))]
 wbc_cells_subset$unique_idx <- 1:nrow(wbc_cells_subset)
 wbc_cells_subset_long <- wbc_cells_subset %>%
   mutate(cell_type = toupper(cell_type)) %>%
@@ -259,11 +260,12 @@ wbc_feature_matrix <- wbc_cells_subset_long %>%
   na.omit()
 
 M <- wbc_feature_matrix[,7:ncol(wbc_feature_matrix)]
-wbc_feature_umap <- umap(M,min_dist = 0.1,verbose=T,n_neighbors=200)
+wbc_feature_umap <- umap(M,min_dist = 0.1,n_neighbors=50,verbose=T)
 wbc_feature_umap_data <- cbind(wbc_feature_matrix[,1:6],wbc_feature_umap$layout)
 
 wbc_feature_matrix_ <- cbind(wbc_feature_matrix[,1:6],M)
 wbc_vc_means <- wbc_feature_matrix_ %>%
+  subset(grepl("multi",model_name)) %>%
   select(-unique_idx,-slide_id,-fine_class,-coarse_class) %>% 
   group_by(model_name,virtual_cell_type) %>% 
   summarise_all(.funs = mean)
@@ -311,7 +313,7 @@ plot_grid(
     rowwise() %>%
     mutate(fine_class = conversion_list[[decode_model_name(model_name)]][fine_class]) %>%
     group_by(model_name,fine_class) %>%
-    summarise(long_kde2d(`1`,`2`,bw,100,L)) %>%
+    summarise(long_kde2d(`1`,`2`,bw,40,L)) %>%
     subset(z >= 0.0005) %>%
     group_by(model_name,x,y) %>%
     summarise(P = max(z)/sum(sort(z,decreasing = T)[1:length(z)]),
@@ -383,7 +385,7 @@ plot_grid(
     rowwise() %>%
     mutate(fine_class = conversion_list[[decode_model_name(model_name)]][fine_class]) %>%
     group_by(model_name,fine_class) %>%
-    summarise(long_kde2d(`1`,`2`,bw,100,L)) %>%
+    summarise(long_kde2d(`1`,`2`,bw,40,L)) %>%
     subset(z >= 0.01) %>%
     group_by(model_name,x,y) %>%
     summarise(P = max(z)/sum(sort(z,decreasing = T)[1:length(z)]),
@@ -406,7 +408,7 @@ plot_grid(
     rowwise() %>%
     mutate(fine_class = conversion_list[[decode_model_name(model_name)]][fine_class]) %>%
     group_by(model_name,fine_class) %>%
-    summarise(long_kde2d(`1`,`2`,bw_rbc,100,L_rbc)) %>%
+    summarise(long_kde2d(`1`,`2`,bw_rbc,40,L_rbc)) %>%
     subset(z >= 0.0005) %>%
     group_by(model_name,x,y) %>%
     summarise(P = max(z)/sum(sort(z,decreasing = T)[1:length(z)]),
@@ -426,4 +428,3 @@ plot_grid(
     ylab("UMAP2"),
   align = "hv",axis = "tblr",ncol = 1,rel_heights = c(1,1)) + 
   ggsave("figures/u-map-density-ratio.pdf",width=5,height=3.5)
-

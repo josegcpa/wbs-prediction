@@ -4,18 +4,20 @@ import h5py
 import numpy as np
 from tqdm import tqdm
 
+N = 1000
+
 try:
     os.makedirs('datasets')
 except:
     pass
 
 dataset_folders = [
-    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_rbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_rbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_rbc']
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/MLL_TIFF/_aggregates_wbc',
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/MLL_TIFF/_aggregates_rbc',
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_NDPI/_aggregates_wbc',
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_NDPI/_aggregates_rbc',
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_SVS_results/_aggregates_wbc',
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_SVS_results/_aggregates_rbc']
 
 dataset_output_root = [
     'datasets/wbc',
@@ -72,12 +74,11 @@ def generate_dataset(input_path,output_path,
                     name + ',' + ','.join([str(x) for x in all_cells[i,:]]) + '\n'
                 )
 
-N = 100
-
 m_wbc,M_wbc = generate_min_max(dataset_folders[0])
 m_rbc,M_rbc = generate_min_max(dataset_folders[1])
 
-dataset_output = [x + '_all_cells.csv' for x in dataset_output_root]
+dataset_output = [x + '_all_cells_{}.csv'.format(N)
+                  for x in dataset_output_root]
 
 generate_dataset(dataset_folders[0],dataset_output[0],m_wbc,M_wbc,N)
 generate_dataset(dataset_folders[1],dataset_output[1],m_rbc,M_rbc,N)

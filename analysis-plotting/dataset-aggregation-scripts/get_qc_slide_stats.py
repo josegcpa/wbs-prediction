@@ -8,12 +8,12 @@ except: pass
 try: os.makedirs('datasets/histograms/')
 except: pass
 
-results_folder = '/hps/nobackup/research/gerstung/josegcpa/data/results'
+results_folder = '/nfs/research/gerstung/josegcpa/data/SLIDES/results'
 
 dataset_folders = {
-    'MLL':'/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/',
-    'ADDEN1':'/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/',
-    'ADDEN2':'/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/'}
+    'MLL':'/nfs/research/gerstung/josegcpa/data/SLIDES/MLL_TIFF/',
+    'ADDEN1':'/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_NDPI/',
+    'ADDEN2':'/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_SVS_results/'}
 
 for dataset_folder in glob('{}/histograms/*'.format(results_folder)):
     dataset_key = dataset_folder.split(os.sep)[-1]

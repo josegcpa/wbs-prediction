@@ -10,12 +10,12 @@ except:
     pass
 
 dataset_folders = [
-    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/MLL_TIFF/_aggregates_rbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_NDPI/_aggregates_rbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_wbc',
-    '/hps/nobackup/research/gerstung/josegcpa/data/ADDEN_SVS_results/_aggregates_rbc']
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/MLL_TIFF/_aggregates_wbc',
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/MLL_TIFF/_aggregates_rbc',
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_NDPI/_aggregates_wbc',
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_NDPI/_aggregates_rbc',
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_SVS_results/_aggregates_wbc',
+    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_SVS_results/_aggregates_rbc']
 
 dataset_output_root = [
     'datasets/wbc',

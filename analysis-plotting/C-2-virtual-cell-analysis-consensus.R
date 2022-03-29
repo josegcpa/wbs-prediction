@@ -766,34 +766,36 @@ groups_of_cells_df <- groups_of_cells %>%
   do.call(what = rbind) %>%
   group_by(virtual_cell_type,data_type,cell_type) %>%
   mutate(total_relevance = sum(is_consensual) * 1000 + length(task_idx) + mean(abs(y))) %>% 
-  mutate(virtual_cell_type = paste(data_type,cell_type,virtual_cell_type)) %>%
   mutate(task_idx = factor(task_idx,levels = c("Disease detection","Disease classification",
                                                "SF3B1mut detection","Anaemia classification") %>% rev)) %>% 
   subset(data_type == "Morphology + B.C.") %>%
   mutate(is_consensual = ifelse(is_consensual,T,NA)) %>%
   rowwise() %>%
-  mutate(label = label_list[[as.character(task_idx)]][as.numeric(y > 1) + 1])
+  mutate(label = label_list[[as.character(task_idx)]][as.numeric(y > 1) + 1]) %>%
+  group_by(virtual_cell_type,cell_type,data_type) %>%
+  filter(any(is_consensual)) %>%
+  mutate(virtual_cell_type = vct_conversion(virtual_cell_type,cell_type))
 
 groups_of_cells_df %>% 
-  ggplot(aes(x = reorder(virtual_cell_type,-total_relevance),fill = y,y = task_idx)) +
+  ggplot(aes(x = virtual_cell_type,fill = y,y = task_idx)) +
   geom_tile() + 
   geom_label(aes(label = label),size = 2,label.size = unit(0,"cm"),
              fill = "white",label.padding = unit(0.07,"cm"),label.r = unit(0,"cm"),
              alpha = 0.8) +
   geom_tile(data = subset(groups_of_cells_df,is_consensual==T),
-            aes(colour = is_consensual),size = 1,fill = NA) +
-  facet_wrap( ~ cell_type,scales = "free_x",ncol = 1) + 
+            aes(colour = is_consensual),size = 0.5,fill = NA) +
+  facet_wrap( ~ factor(cell_type,levels = c("WBC","RBC")),scales = "free_x",ncol = 2) + 
   theme_pretty(base_size = 6) + 
   scale_fill_gradient2(low = "blue4",high = "red4",mid = "white",midpoint = 1,
                        name = "Proportion ratio") + 
   scale_colour_manual(values = c("black"),guide="none") +
-  theme(axis.title.y = element_blank(),legend.key.width = unit(0.2,"cm"),
-        legend.text = element_text(size = 6)) + 
+  theme(axis.title.y = element_blank(),legend.key.height = unit(0.2,"cm"),
+        legend.text = element_text(size = 6),legend.position = "bottom",
+        legend.spacing = unit(0,"cm")) + 
   xlab("Virtual cell type") + 
-  scale_x_discrete(labels = function(x) str_match(x,"[0-9]+"),expand = c(0,0)) + 
+  scale_x_discrete(expand = c(0,0)) + 
   scale_y_discrete(expand = c(0,0)) +
-  ggsave(
-    sprintf("figures/%s/mile-vice-mo-map.pdf",output_str),height=2.4,width=4)
+  ggsave(sprintf("figures/%s/mile-vice-mo-map.pdf",output_str),height=1.3,width=4.5)
 
 # multiple objective correlations -----------------------------------------
 
@@ -1481,3 +1483,52 @@ comparison_df %>%
   theme(legend.key.size = unit(0,"cm")) +
   ggsave(sprintf("figures/%s/mile-vice-proportion-correlations-morph-bc-consensus.pdf",output_str),
          width = 5,height = 2.5)
+
+
+# proportion differences between and within consensus ---------------------
+
+full_proportions_cell_type_mo %>% 
+  mutate(virtual_cell_type = ifelse(is_consensual,virtual_cell_type,"Other")) %>% 
+  group_by(slide_id,virtual_cell_type,fine_class,model_name,cell_type,task_idx) %>% 
+  summarise(proportion = sum(proportion)) %>% 
+  subset(grepl("\\.bc",model_name) & task_idx == "binary") %>% 
+  mutate(is_other = virtual_cell_type == "Other") %>%
+  group_by(cell_type,is_other,slide_id) %>% 
+  summarise(x = sum(proportion)) %>% 
+  mutate(is_other = ifelse(is_other,"Uncertain","Stable")) %>%
+  ggplot(aes(y = is_other,x = x)) + 
+  geom_jitter(height = 0.3,width = 0,size = 0.25,alpha = 0.25) + 
+  geom_boxplot(alpha = 0.4,outlier.alpha = 0,size = 0.25) + 
+  facet_wrap(~ cell_type,ncol = 1) + 
+  theme_pretty(base_size = 6) +
+  xlab("") + 
+  ylab("CM proportion") + 
+  ggsave(sprintf("figures/%s/mile-vice-consensus-vs-other.pdf",output_str),height = 1.3,width = 3)
+
+full_proportions_cell_type_mo %>% 
+  mutate(mc = ifelse(is_consensual,vct_conversion(virtual_cell_type,cell_type),"Uncertain CM")) %>% 
+  mutate(mc = ifelse(is.na(mc),"Unclear association",mc)) %>% 
+  ungroup %>% 
+  group_by(slide_id,virtual_cell_type,fine_class,model_name,cell_type,task_idx,mc) %>% 
+  summarise(proportion = sum(proportion)) %>% 
+  subset(grepl("\\.bc",model_name) & task_idx == "binary") %>% 
+  group_by(cell_type,slide_id,virtual_cell_type,mc) %>% 
+  summarise(x = sum(proportion)) %>%
+  mutate(is_consensual = ifelse(mc == "Uncertain CM","Uncertain CM","Stable CM")) %>%
+  mutate(virtual_cell_type = paste(cell_type,virtual_cell_type)) %>%
+  group_by(cell_type,virtual_cell_type,is_consensual,mc) %>%
+  summarise(x = mean(x)) %>% 
+  mutate(mc = factor(mc,levels = c(1:7,"Unclear association","Uncertain CM"))) %>% 
+  ggplot(aes(y = factor(is_consensual,levels = c("Uncertain CM","Stable CM")),
+             x = x,fill = mc,group = reorder(virtual_cell_type,as.numeric(mc)*1000 + x))) +
+  geom_bar(stat = "identity",colour = "black",size = 0.25) + 
+  facet_wrap(~ cell_type,ncol = 1) + 
+  theme_pretty(base_size = 6) +
+  theme(legend.position = "bottom",legend.spacing = unit(0,"cm"),
+        legend.key.size = unit(0.2,"cm")) + 
+  scale_x_continuous(expand = c(0,0,0.05,0),breaks = c(0,0.2,0.4,0.6,0.8,0.9)) +
+  xlab("Median proportion") +
+  ylab("") +
+  scale_fill_aaas(name = NULL) +
+  guides(fill = guide_legend(nrow = 2)) +
+  ggsave(sprintf("figures/%s/mile-vice-consensus-vs-other-bar.pdf",output_str),height = 1.5,width = 3)

@@ -11,6 +11,9 @@ library(umap)
 library(cowplot)
 library(glmnet)
 library(MASS)
+library(ggrepel)
+
+select <- dplyr::select
 
 multi_objective_matching <- c("anemia_binary","binary","mds_binary","disease_binary")
 
@@ -142,7 +145,7 @@ coefficients_plot <- function(x) {
     geom_tile() + 
     facet_wrap( ~ sprintf('%s (%s)',data_type,cell_type),scales = "free") + 
     theme_pretty(base_size = 6) + 
-    theme(legend.position = "bottom") +
+    theme(legend.position = "bottom",legend.box.spacing = unit(0.05,"cm")) +
     xlab("Virtual cell type") + 
     ylab("Feature") +
     scale_fill_gradient2(low = 'blue4',mid = "white",high = "red4",
@@ -398,8 +401,16 @@ vc_proportions_wide <- full_proportions_cell_type_mo %>%
   #mutate(proportion = scale(proportion)) %>%
   spread(key = "virtual_cell_type",value = "proportion") 
 
-rvc_proportions_wide <- vc_proportions_wide[,!grepl("WBC",colnames(vc_proportions_wide))]
-wvc_proportions_wide <- vc_proportions_wide[,!grepl("RBC",colnames(vc_proportions_wide))]
+rvc_proportions_wide <- vc_proportions_wide[,!grepl("WBC",colnames(vc_proportions_wide))] %>%
+  mutate(fine_class = ifelse(
+    coarse_class == "MDS",
+    ifelse(fine_class == "SF3B1-mutant","SF3B1-mutant","SF3B1-wildtype"),
+    as.character(fine_class)))
+wvc_proportions_wide <- vc_proportions_wide[,!grepl("RBC",colnames(vc_proportions_wide))] %>%
+  mutate(fine_class = ifelse(
+    coarse_class == "MDS",
+    ifelse(fine_class == "SF3B1-mutant","SF3B1-mutant","SF3B1-wildtype"),
+    as.character(fine_class)))
 
 glmnet_models <- readRDS("data_output/glmnet_models.rds")
 
@@ -439,7 +450,8 @@ wbc_merged <- merge(
   suffixes = c(".variance",".mean")) %>%
   merge(wvc_proportions_wide,by = c("slide_id","fine_class"))
 
-# analysis ----------------------------------------------------------------
+# associations between vct prop and variance + examples -------------------
+
 
 all_correlations <- list()
 all_coefficient_associations <- list() 
@@ -622,3 +634,409 @@ wbc_merged %>%
   ggsave(sprintf("figures/%s/mile-vice-vct-variance-association-example-3.pdf",output_str),
          width = 1.7,height = 1.7)
 
+# feature distributions vs. vct -------------------------------------------
+
+wbc_consensus <- all_consensus_mo_df %>%
+  subset(cell_type == "WBC" & grepl("\\.bc",model_name)) %>% 
+  select(virtual_cell_type,is_consensual,task_idx)
+wbc_consensus$task <- str_split(rownames(wbc_consensus),pattern = " ") %>%
+  sapply(function(x) str_match(x[2],'[a-z_]+'))
+rbc_consensus <- all_consensus_mo_df %>%
+  subset(cell_type == "RBC" & grepl("\\.bc",model_name)) %>% 
+  select(virtual_cell_type,is_consensual,task_idx)
+rbc_consensus$task <- str_split(rownames(rbc_consensus),pattern = " ") %>%
+  sapply(function(x) str_match(x[2],'[a-z_]+'))
+
+features_rbc <- features_all[
+  unlist(read_csv("data_output/rbc_feature_subset",col_names = F))]
+features_wbc <- c(features_all,features_nuclear)[
+  unlist(read_csv("data_output/wbc_feature_subset",col_names = F))]
+
+rbc_many_cells <- list.files("datasets/many-cells",pattern = "^rbc-cv_subset\\.multi.*bc",
+                             full.names = T) %>%
+  lapply(read_csv,col_names = c(
+    "model_name","slide_id","cell_type","virtual_cell_type",features_rbc)) %>%
+  do.call(what = rbind) %>%
+  merge(all_conditions,by = "slide_id") %>%
+  mutate(fine_class = ifelse((fine_class != "SF3B1-mutant") & (coarse_class == "MDS"),
+                             "SF3B1-wildtype",as.character(fine_class))) %>%
+  mutate(virtual_cell_type = virtual_cell_type + 1) %>%
+  mutate(binary_class = ifelse(coarse_class == "Normal","Normal","Disease"))
+wbc_many_cells <- list.files("datasets/many-cells",pattern = "^wbc-cv_subset\\.multi.*bc",
+                             full.names = T) %>%
+  lapply(read_csv,col_names = c(
+    "model_name","slide_id","cell_type","virtual_cell_type",features_wbc)) %>%
+  do.call(what = rbind) %>%
+  merge(all_conditions,by = "slide_id") %>%
+  mutate(fine_class = ifelse((fine_class != "SF3B1-mutant") & (coarse_class == "MDS"),
+                            "SF3B1-wildtype",as.character(fine_class))) %>%
+  mutate(virtual_cell_type = virtual_cell_type + 1) %>%
+  mutate(binary_class = ifelse(coarse_class == "Normal","Normal","Disease"))
+
+rbc_vct_centers <- rbc_many_cells %>%
+  mutate(M = length(virtual_cell_type)) %>% 
+  select(-cell_type) %>%
+  group_by(virtual_cell_type,fine_class,coarse_class) %>%
+  mutate(N = length(virtual_cell_type)) %>% 
+  gather(key = "feature",value = "value",-slide_id,-model_name,
+         -virtual_cell_type,-fine_class,-coarse_class,-binary_class,-N,-M) %>% 
+  group_by(virtual_cell_type,feature) %>%
+  mutate(center = mean(value),
+         center_median = median(value)) %>% 
+  ungroup %>%
+  select(virtual_cell_type,feature,center,center_median,fine_class,coarse_class,binary_class,N,M) %>%
+  distinct %>% 
+  merge(rbc_consensus,by = "virtual_cell_type") %>%
+  select(-task,-task_idx) %>%
+  distinct
+
+wbc_vct_centers <- wbc_many_cells %>%
+  mutate(M = length(virtual_cell_type)) %>% 
+  select(-cell_type) %>%
+  group_by(virtual_cell_type,fine_class,coarse_class) %>%
+  mutate(N = length(virtual_cell_type)) %>% 
+  gather(key = "feature",value = "value",-slide_id,-model_name,
+         -virtual_cell_type,-fine_class,-coarse_class,-binary_class,-N,-M) %>% 
+  group_by(virtual_cell_type,feature) %>%
+  mutate(center = median(value)) %>% 
+  ungroup %>%
+  select(virtual_cell_type,feature,center,fine_class,coarse_class,binary_class,N,M) %>%
+  distinct %>% 
+  merge(wbc_consensus,by = "virtual_cell_type") %>%
+  select(-task,-task_idx) %>%
+  distinct
+
+# WBC binary classification plots - nuclear perimeter
+
+center_data <- subset(wbc_vct_centers,feature == "perimeter_separate_nuclear") %>%
+  group_by(binary_class,virtual_cell_type,center,M) %>%
+  summarise(N = sum(N)) %>%
+  group_by(binary_class) %>%
+  mutate(M = sum(N)) %>%
+  mutate(virtual_cell_type = vct_conversion(virtual_cell_type,"wbc")) %>%
+  na.omit() %>% 
+  group_by(virtual_cell_type) %>%
+  mutate(plot_label = as.character(ifelse(N/M == max(N/M),virtual_cell_type,NA)))
+
+d <- 40
+wbc_many_cells %>% 
+  ggplot() +
+  geom_density(aes(x = perimeter_separate_nuclear,colour = binary_class)) + 
+  geom_segment(data = center_data,
+               aes(x = center,y = 0,xend = center,yend = N/M/d),
+               linetype = 3,size = 0.25) +
+  geom_point(data = center_data,
+             aes(x = center,y = N/M/d,colour = binary_class),
+             stat = "identity",width = 10,
+             position=position_dodge(width = 0),size = 1.5) + 
+  geom_label(data = center_data,colour = "black",size = 2.1,alpha = 0.7,
+             label.r = unit(0.1,"cm"),label.padding = unit(0.05,"cm"),
+             aes(x = center,y = N/M/d,label = plot_label),vjust = -0.5,
+             fill = "lavender") + 
+  xlab("WBC nuclear perimeter") + 
+  ylab("Density (line)") + 
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ .*d,name = "VCT proportion (dots)"),
+                     expand = c(0,0,0.01,0)) + 
+  theme_pretty(base_size = 6) + 
+  theme(legend.key.size = unit(0.2,"cm"),legend.title = element_blank(),
+        legend.position = "bottom",legend.box.spacing = unit(0.05,"cm")) + 
+  scale_fill_manual(values = fine_colours,breaks = c("Normal","Disease")) +
+  scale_colour_manual(values = fine_colours,breaks = c("Normal","Disease"),guide=F) + 
+  coord_cartesian(xlim = c(NA,450)) + 
+  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-wbc-nuclear-perimeter.pdf",output_str),
+         width = 3.5,height = 2)
+
+# RBC disease classification plots - cdf std
+
+center_data <- subset(rbc_vct_centers,feature == "cdf_std") %>%
+  subset(coarse_class %in% c("MDS","Anaemia")) %>% 
+  group_by(coarse_class,virtual_cell_type,center,M) %>%
+  summarise(N = sum(N)) %>%
+  group_by(coarse_class) %>%
+  mutate(M = sum(N)) %>%
+  group_by(virtual_cell_type) %>%
+  mutate(virtual_cell_type = vct_conversion(virtual_cell_type,"rbc")) %>%
+  na.omit() %>% 
+  mutate(plot_label = as.character(ifelse(N/M == max(N/M),virtual_cell_type,NA)))
+
+d <- 1
+rbc_many_cells %>% 
+  subset(coarse_class %in% c("MDS","Anaemia")) %>% 
+  ggplot() +
+  geom_density(aes(x = cdf_std,colour = coarse_class)) + 
+  geom_segment(data = center_data,
+               aes(x = center,y = 0,xend = center,yend = N/M/d),
+               linetype = 3,size = 0.25) +
+  geom_point(data = center_data,
+             aes(x = center,y = N/M/d,colour = coarse_class),
+             stat = "identity",width = 10,
+             position=position_dodge(width = 0),size = 1.5) + 
+  geom_label(data = center_data,colour = "black",size = 2.1,alpha = 0.7,
+             label.r = unit(0.1,"cm"),label.padding = unit(0.05,"cm"),
+             aes(x = center,y = N/M/d,label = plot_label),vjust = -0.5,
+             fill = "lightpink") + 
+  xlab("RBC std(CDF)") + 
+  ylab("Density (line)") + 
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ .*d,name = "VCT proportion (dots)"),
+                     expand = c(0,0,0.01,0)) + 
+  theme_pretty(base_size = 6) + 
+  theme(legend.key.size = unit(0.2,"cm"),legend.title = element_blank(),
+        legend.position = "bottom",legend.box.spacing = unit(0.05,"cm")) + 
+  scale_fill_manual(values = fine_colours,breaks = c("MDS","Anaemia")) +
+  scale_colour_manual(values = fine_colours,breaks = c("MDS","Anaemia"),guide = F) +
+  scale_alpha(guide = F) +
+  #coord_cartesian(xlim = c(10,NA)) +
+  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-rbc-std-cdf.pdf",output_str),
+         width = 3.5,height = 2)
+
+# WBC disease classification plots - convexity
+
+center_data <- subset(wbc_vct_centers,feature == "convexity") %>%
+  subset(coarse_class %in% c("MDS","Anaemia")) %>% 
+  group_by(coarse_class,virtual_cell_type,center,M) %>%
+  summarise(N = sum(N)) %>%
+  group_by(coarse_class) %>%
+  mutate(M = sum(N)) %>%
+  group_by(virtual_cell_type) %>%
+  mutate(virtual_cell_type = vct_conversion(virtual_cell_type,"wbc")) %>%
+  na.omit() %>% 
+  mutate(plot_label = as.character(ifelse(N/M == max(N/M),virtual_cell_type,NA)))
+
+d <- 0.003
+wbc_many_cells %>% 
+  subset(coarse_class %in% c("MDS","Anaemia")) %>% 
+  ggplot() +
+  geom_density(aes(x = convexity,colour = coarse_class)) + 
+  geom_segment(data = center_data,
+               aes(x = center,y = 0,xend = center,yend = N/M/d),
+               linetype = 3,size = 0.25) +
+  geom_point(data = center_data,
+             aes(x = center,y = N/M/d,colour = coarse_class),
+             stat = "identity",width = 10,
+             position=position_dodge(width = 0),size = 1.5) + 
+  geom_label(data = center_data,colour = "black",size = 2.1,alpha = 0.7,
+             label.r = unit(0.1,"cm"),label.padding = unit(0.05,"cm"),
+             aes(x = center,y = N/M/d,label = plot_label),vjust = -0.5,
+             fill = "lavender") + 
+  xlab("WBC convexity") + 
+  ylab("Density (line)") + 
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ .*d,name = "VCT proportion (dots)"),
+                     expand = c(0,0,0.01,0)) + 
+  theme_pretty(base_size = 6) + 
+  theme(legend.key.size = unit(0.2,"cm"),legend.title = element_blank(),
+        legend.position = "bottom",legend.box.spacing = unit(0.05,"cm")) + 
+  scale_fill_manual(values = fine_colours,breaks = c("MDS","Anaemia")) +
+  scale_colour_manual(values = fine_colours,breaks = c("MDS","Anaemia"),guide = F) + 
+  scale_alpha(guide = F) +
+  coord_cartesian(xlim = c(0.84,0.97)) +
+  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-wbc-convexity.pdf",output_str),
+         width = 3.5,height = 2)
+
+# RBC SF3B1 plots - mean cdf
+
+center_data <- subset(rbc_vct_centers,feature == "cdf_mean") %>%
+  subset(coarse_class %in% c("MDS")) %>% 
+  group_by(fine_class,virtual_cell_type,center,M) %>%
+  summarise(N = sum(N)) %>%
+  group_by(fine_class) %>%
+  mutate(M = sum(N)) %>%
+  group_by(virtual_cell_type) %>%
+  mutate(virtual_cell_type = vct_conversion(virtual_cell_type,"rbc")) %>%
+  na.omit() %>% 
+  mutate(plot_label = as.character(ifelse(N/M == max(N/M),virtual_cell_type,NA)))
+
+d <- 80
+rbc_many_cells %>% 
+  subset(coarse_class %in% c("MDS")) %>% 
+  ggplot() +
+  geom_density(aes(x = cdf_mean,colour = fine_class)) + 
+  geom_segment(data = center_data,
+               aes(x = center,y = 0,xend = center,yend = N/M/d),
+               linetype = 3,size = 0.25) +
+  geom_point(data = center_data,
+             aes(x = center,y = N/M/d,colour = fine_class),
+             stat = "identity",width = 10,
+             position=position_dodge(width = 0),size = 1.5) + 
+  geom_label(data = center_data,colour = "black",size = 2.1,alpha = 0.7,
+             label.r = unit(0.1,"cm"),label.padding = unit(0.05,"cm"),
+             aes(x = center,y = N/M/d,label = plot_label),vjust = -0.5,
+             fill = "lightpink") + 
+  xlab("RBC mean(CDF)") + 
+  ylab("Density (line)") + 
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ .*d,name = "VCT proportion (dots)"),
+                     expand = c(0,0,0.01,0)) + 
+  theme_pretty(base_size = 6) + 
+  theme(legend.key.size = unit(0.2,"cm"),legend.title = element_blank(),
+        legend.position = "bottom",legend.box.spacing = unit(0.05,"cm")) + 
+  scale_fill_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype")) +
+  scale_colour_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype"),guide=F) +
+  scale_alpha(guide = F) +
+  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-rbc-cdf-mean.pdf",output_str),
+         width = 3.5,height = 2)
+
+# RBC SF3B1 plots - area
+
+center_data <- subset(rbc_vct_centers,feature == "area") %>%
+  subset(coarse_class %in% c("MDS")) %>% 
+  group_by(fine_class,virtual_cell_type,center,M) %>%
+  summarise(N = sum(N)) %>%
+  group_by(fine_class) %>%
+  mutate(M = sum(N)) %>%
+  group_by(virtual_cell_type) %>%
+  mutate(virtual_cell_type = vct_conversion(virtual_cell_type,"rbc")) %>%
+  na.omit() %>% 
+  mutate(plot_label = as.character(ifelse(N/M == max(N/M),virtual_cell_type,NA)))
+
+d <- 120
+rbc_many_cells %>% 
+  subset(coarse_class %in% c("MDS")) %>% 
+  ggplot() +
+  geom_density(aes(x = area,colour = fine_class)) + 
+  geom_segment(data = center_data,
+               aes(x = center,y = 0,xend = center,yend = N/M/d),
+               linetype = 3,size = 0.25) +
+  geom_point(data = center_data,
+             aes(x = center,y = N/M/d,colour = fine_class),
+             stat = "identity",width = 10,
+             position=position_dodge(width = 0),size = 1.5) + 
+  geom_label(data = center_data,colour = "black",size = 2.1,alpha = 0.7,
+             label.r = unit(0.1,"cm"),label.padding = unit(0.05,"cm"),
+             aes(x = center,y = N/M/d,label = plot_label),vjust = -0.5,
+             fill = "lightpink") + 
+  xlab("RBC area") + 
+  ylab("Density (line)") + 
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ .*d,name = "VCT proportion (dots)"),
+                     expand = c(0,0,0.01,0)) + 
+  theme_pretty(base_size = 6) + 
+  theme(legend.key.size = unit(0.2,"cm"),legend.title = element_blank(),
+        legend.position = "bottom",legend.box.spacing = unit(0.05,"cm")) + 
+  scale_fill_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype")) +
+  scale_colour_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype"),guide=F) +
+  scale_alpha(guide = F) +
+  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-rbc-area.pdf",output_str),
+         width = 3.5,height = 2)
+
+# WBC SF3B1 plots - nuclear convexity
+
+center_data <- subset(wbc_vct_centers,feature == "convexity_separate_nuclear") %>%
+  subset(coarse_class %in% c("MDS")) %>% 
+  group_by(fine_class,virtual_cell_type,center,M) %>%
+  summarise(N = sum(N)) %>%
+  group_by(fine_class) %>%
+  mutate(M = sum(N)) %>%
+  group_by(virtual_cell_type) %>%
+  mutate(virtual_cell_type = vct_conversion(virtual_cell_type,"wbc")) %>%
+  na.omit() %>% 
+  mutate(plot_label = as.character(ifelse(N/M == max(N/M),virtual_cell_type,NA)))
+
+d <- 0.035
+wbc_many_cells %>% 
+  subset(coarse_class %in% c("MDS")) %>% 
+  ggplot() +
+  geom_density(aes(x = convexity_separate_nuclear,colour = fine_class)) + 
+  geom_segment(data = center_data,
+               aes(x = center,y = 0,xend = center,yend = N/M/d),
+               linetype = 3,size = 0.25) +
+  geom_point(data = center_data,
+             aes(x = center,y = N/M/d,colour = fine_class),
+             stat = "identity",width = 10,
+             position=position_dodge(width = 0),size = 1.5) + 
+  geom_label(data = center_data,colour = "black",size = 2.1,alpha = 0.7,
+             label.r = unit(0.1,"cm"),label.padding = unit(0.05,"cm"),
+             aes(x = center,y = N/M/d,label = plot_label),vjust = -0.5,
+             fill = "lavender") + 
+  xlab("WBC nuclear convexity") + 
+  ylab("Density (line)") + 
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ .*d,name = "VCT proportion (dots)"),
+                     expand = c(0,0,0.01,0)) + 
+  theme_pretty(base_size = 6) + 
+  theme(legend.key.size = unit(0.2,"cm"),legend.title = element_blank(),
+        legend.position = "bottom",legend.box.spacing = unit(0.05,"cm")) + 
+  scale_fill_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype")) +
+  scale_colour_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype"),guide=F) +
+  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-wbc-nuclear-convexity.pdf",output_str),
+         width = 3.5,height = 2)
+
+# WBC anaemia plots - solidity
+
+center_data <- subset(wbc_vct_centers,feature == "solidity") %>%
+  subset(coarse_class %in% c("Anaemia")) %>% 
+  group_by(fine_class,virtual_cell_type,center,M) %>%
+  summarise(N = sum(N)) %>%
+  group_by(fine_class) %>%
+  mutate(M = sum(N)) %>%
+  group_by(virtual_cell_type) %>%
+  mutate(virtual_cell_type = vct_conversion(virtual_cell_type,"wbc")) %>%
+  na.omit() %>% 
+  mutate(plot_label = as.character(ifelse(N/M == max(N/M),virtual_cell_type,NA)))
+
+d <- 0.005
+wbc_many_cells %>% 
+  subset(coarse_class %in% c("Anaemia")) %>% 
+  ggplot() +
+  geom_density(aes(x = solidity,colour = fine_class)) + 
+  geom_segment(data = center_data,
+               aes(x = center,y = 0,xend = center,yend = N/M/d),
+               linetype = 3,size = 0.25) +
+  geom_point(data = center_data,
+             aes(x = center,y = N/M/d,colour = fine_class),
+             stat = "identity",width = 10,
+             position=position_dodge(width = 0),size = 1.5) + 
+  geom_label(data = center_data,colour = "black",size = 2.1,alpha = 0.7,
+             label.r = unit(0.1,"cm"),label.padding = unit(0.05,"cm"),
+             aes(x = center,y = N/M/d,label = plot_label),vjust = -0.5,
+             fill = "lightpink") + 
+  xlab("WBC solidity") + 
+  ylab("Density (line)") + 
+  scale_y_continuous(sec.axis = sec_axis(trans = ~ .*d,name = "VCT proportion (dots)"),
+                     expand = c(0,0,0.01,0)) + 
+  theme_pretty(base_size = 6) + 
+  theme(legend.key.size = unit(0.2,"cm"),legend.title = element_blank(),
+        legend.position = "bottom",legend.box.spacing = unit(0.05,"cm")) + 
+  scale_fill_manual(values = c(`Iron deficiency` = "palevioletred1",Megaloblastic = "red4")) +
+  scale_colour_manual(values = c(`Iron deficiency` = "palevioletred1",Megaloblastic = "red4"),
+                      guide = F) + 
+  scale_alpha(guide = F) +
+  coord_cartesian(xlim = c(NA,1.3)) + 
+  scale_x_continuous(breaks = c(1,1.1,1.2,1.3,1.4,1.5)) +
+  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-wbc-solidty.pdf",output_str),
+         width = 3.5,height = 2)
+
+# feature wise variance values
+
+remove_outliers <- function(x,m=1.5) {
+  iqr <- IQR(x)
+  iqr_range <- quantile(x,c(0.25,0.75))
+  x <- (x > (iqr_range[1] - iqr*m)) & (x < (iqr_range[2] + iqr*m)) 
+  return(x)
+}
+
+wbc_many_cells %>%
+  filter(!(slide_id %in% poor_quality_slides)) %>% 
+  ungroup %>% 
+  group_by(binary_class) %>%
+  filter(remove_outliers(perimeter_separate_nuclear,5)) %>%
+  summarise(V = var(perimeter_separate_nuclear))
+
+rbc_many_cells %>%
+  filter(!(slide_id %in% poor_quality_slides)) %>% 
+  ungroup %>% 
+  group_by(coarse_class) %>%
+  filter(remove_outliers(cdf_std,5)) %>%
+  summarise(V = var(cdf_std))
+
+wbc_many_cells %>%
+  filter(!(slide_id %in% poor_quality_slides)) %>% 
+  subset(coarse_class %in% c("MDS")) %>%
+  ungroup %>% 
+  group_by(fine_class) %>%
+  filter(remove_outliers(convexity_separate_nuclear,5)) %>%
+  summarise(V = var(convexity_separate_nuclear))
+
+rbc_many_cells %>%
+  filter(!(slide_id %in% poor_quality_slides)) %>% 
+  subset(coarse_class %in% c("MDS")) %>%
+  ungroup %>% 
+  group_by(fine_class) %>%
+  filter(remove_outliers(area,5)) %>%
+  summarise(V = mean(area))

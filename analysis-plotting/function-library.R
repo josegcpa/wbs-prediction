@@ -192,6 +192,19 @@ decode_model_name <- function(model_names) {
   return(O)
 }
 
+vct_conversion <- function(vct,cell_type) {
+  #' Convenience function to convert MC from MILe-ViCe to manuscript notation
+  wvct_to_wmc <- c(`14`=1,`4`=2,`11`=3,`22`=4, `8`=5, `10`=6, `13`=7)
+  rvct_to_rmc <- c(`7`=1,`8`=2,`12`=3,`17`=4, `21`=5, `23`=6, `15`=7)
+  if (length(cell_type) < length(vct)) {
+    cell_type <- rep(cell_type,length.out = length(vct))
+  }
+  ifelse(tolower(cell_type) == "wbc",wvct_to_wmc[as.character(vct)],
+         ifelse(tolower(cell_type) == "rbc",rvct_to_rmc[as.character(vct)],NA)) %>%
+    as.character %>%
+    return
+}
+
 # create-directories ------------------------------------------------------
 
 dir.create("figures/",showWarnings = F)

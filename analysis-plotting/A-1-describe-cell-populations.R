@@ -53,17 +53,17 @@ qc_count <- read_csv("datasets/qc_summary.csv",
 
 rbc_counts <-  rbind(
   read_csv(
-    "data_output/rbc_counts.csv",
+    "datasets/rbc_counts.csv",
     col_names = c("slide_id","counts"),
     col_types = c(col_character(),col_double())) %>%
     cbind(dataset = "MLLC"),
   read_csv(
-    "data_output/rbc_counts_adden_1.csv",
+    "datasets/rbc_adden_1_counts.csv",
     col_names = c("slide_id","counts"),
     col_types = c(col_character(),col_double()))  %>%
     cbind(dataset = "AC1"),
   read_csv(
-    "data_output/rbc_counts_adden_2.csv",
+    "datasets/rbc_adden_2_counts.csv",
     col_names = c("slide_id","counts"),
     col_types = c(col_character(),col_double())) %>%
     cbind(dataset = "AC2")
@@ -75,17 +75,17 @@ rbc_counts <-  rbind(
 
 wbc_counts <-  rbind(
   read_csv(
-    "data_output/wbc_counts.csv",
+    "datasets/wbc_counts.csv",
     col_names = c("slide_id","counts"),
     col_types = c(col_character(),col_double())) %>%
     cbind(dataset = "MLLC"),
   read_csv(
-    "data_output/wbc_counts_adden_1.csv",
+    "datasets/wbc_adden_1_counts.csv",
     col_names = c("slide_id","counts"),
     col_types = c(col_character(),col_double()))  %>%
     cbind(dataset = "AC1"),
   read_csv(
-    "data_output/wbc_counts_adden_2.csv",
+    "datasets/wbc_adden_2_counts.csv",
     col_names = c("slide_id","counts"),
     col_types = c(col_character(),col_double())) %>%
     cbind(dataset = "AC2")
@@ -250,7 +250,7 @@ cat(sprintf("robust R2 (Detected RBC vs. good quality tiles) = %.4f (CI = [%.4f,
 # feature distribution per condition (wbc) --------------------------------
 
 wbc_all_cells_summaries <- read_csv(
-  "data_output/wbc_summaries.csv",
+  "datasets/wbc_summaries.csv",
   col_names = c("slide_id",features_all,features_nuclear,"f"),
   col_types = c(list(col_character()),
                 replicate(length(c(features_all,features_nuclear)),col_double()),
@@ -508,7 +508,7 @@ dt_wbc %>%
 # feature distribution per condition (rbc) --------------------------------
 
 rbc_all_cells_summaries <- read_csv(
-  "data_output/rbc_summaries.csv",
+  "datasets/rbc_summaries.csv",
   col_names = c("slide_id",features_all,"f"),
   col_types = c(list(col_character()),
                 replicate(length(c(features_all)),col_double()),

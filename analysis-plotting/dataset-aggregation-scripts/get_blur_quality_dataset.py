@@ -7,7 +7,7 @@ from tqdm import tqdm
 try: os.makedirs('datasets')
 except: pass
 
-results_folder = '/hps/research/gerstung/josegcpa/projects/01IMAGE/quality-net'
+results_folder = '/nfs/research/gerstung/josegcpa/projects/01IMAGE/quality-net'
 
 output = open('datasets/blur-quality-net.csv','w')
 with h5py.File('{}/dataset_hdf5/train.h5'.format(results_folder)) as F:

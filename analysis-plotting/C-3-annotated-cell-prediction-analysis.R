@@ -135,11 +135,11 @@ generate_plots <- function(tmp_data) {
     mutate(sig = ifelse(p.val < 0.05,"*",NA)) %>% 
     mutate(vcf = paste(model_id,virtual_cell_type)) %>%
     group_by(vcf) %>%
+    filter(any(sig == "*")) %>%
     mutate(S = -as.numeric(label)[which.max(Enrichment)]) %>%
     ungroup %>%
     mutate(vcf = reorder(vcf,S)) %>%
     group_by(vcf) %>%
-    #filter(any(sig == '*')) %>% 
     ggplot(aes(y = label,x = vcf,
                fill = Enrichment)) + 
     geom_tile() + 
@@ -154,7 +154,7 @@ generate_plots <- function(tmp_data) {
           legend.key.height = unit(0.2,"cm")) + 
     guides(fill = guide_legend(nrow = 1)) + 
     scale_size(limits = c(0,1)) + 
-    scale_x_discrete(labels = function(x) str_match(x,'[0-9]+$'))
+    scale_x_discrete(labels = function(x) str_match(x,'[CM0-9]+$'))
   
   return(list(heatmap_plot = heatmap_plot,entropy_plot = entropy_plot,
               count_plot = count_plot))
@@ -373,11 +373,16 @@ tmp_data <- wbc_labels_mo %>%
   subset(data_type == "Morphology + B.C.") %>%
   process_data()
 
-plots <- generate_plots(tmp_data)
+plots <- tmp_data %>%
+  mutate(vct_l = vct_conversion(virtual_cell_type,"wbc")) %>%
+  mutate(virtual_cell_type = ifelse(
+    is.na(vct_l),as.character(virtual_cell_type),paste0("CM",vct_l))) %>%
+  select(-vct_l) %>%
+  generate_plots()
 plot_grid(plots$heatmap_plot,plots$count_plot,
           align = "h",axis = "lrtb",rel_widths = c(1,0.17),nrow = 1) + 
   ggsave("figures/mile-vice-annotated-cells-mo-wbc-morphology-bc.pdf",
-         height=2,width = 5.5)
+         height=2,width = 6)
 
 # rbc (morphology) --------------------------------------------------------
 
@@ -408,9 +413,14 @@ tmp_data <- rbc_labels_mo %>%
   subset(data_type == "Morphology + B.C.") %>%
   process_data()
 
-plots <- generate_plots(tmp_data)
+plots <- tmp_data %>%
+  mutate(vct_l = vct_conversion(virtual_cell_type,"rbc")) %>%
+  mutate(virtual_cell_type = ifelse(
+    is.na(vct_l),as.character(virtual_cell_type),paste0("CM",vct_l))) %>%
+  select(-vct_l) %>%
+  generate_plots()
 plot_grid(plots$heatmap_plot,plots$count_plot,
           align = "h",axis = "lrtb",rel_widths = c(1,0.17),nrow = 1) + 
   ggsave("figures/mile-vice-annotated-cells-mo-rbc-morphology-bc.pdf",
-         height=2,width = 5.5)
+         height=2,width = 6)
 
