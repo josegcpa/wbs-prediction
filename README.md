@@ -21,8 +21,8 @@ Each folder requires different packages and a standard environment manager is ad
 
 ### Project enumeration
 
-1. `pipeline_tf2` - contains the pipeline for WBC and RBC detection and characterisation from WBS. Also available as a Docker container in [Docker hub](https://hub.docker.com/repository/docker/josegcpa/blood-cell-detection)
-2. `mile-vice` - contains the code to train and run MILe-ViCe on the output from `pipeline`
+1. `pipeline_tf2` - contains Haemorasis, the pipeline for WBC and RBC detection and characterisation from WBS. Also available as a Docker container in [Docker hub](https://hub.docker.com/repository/docker/josegcpa/blood-cell-detection)
+2. `mile-vice` - contains the code to train and run MILe-ViCe on the output from [Haemorasis](https://github.com/josegcpa/haemorasis)
 3. `analysis-plotting` - contains the code to analyse and plot the results from the previous processes
 
 ## Running only the `analysis-plotting` scripts
