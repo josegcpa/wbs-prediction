@@ -16,6 +16,12 @@ def has_bc(wcs):
     else:
         return ""
 
+def has_bc_cv(wcs):
+    if '.bc' in wcs.model_path:
+        return "--other_dataset_path datasets/blood_counts_no_header.csv"
+    else:
+        return ""
+
 model_ids = ['subset','subset_dropout']
 labels = ['anemia_binary','binary','mds_binary','disease_binary']
 layer_matching = {x:i for i,x in enumerate(labels)}
@@ -39,8 +45,10 @@ for model_id in model_ids:
             label_path = os.path.split(label_path)[-1]
             out = 'ev-scores/{}.{}'.format(model_path,label_path)
             consensus_out = 'ev-scores-consensus/{}.{}'.format(model_path,label_path)
+            cv_consensus_out = 'cv-scores-consensus/{}.{}'.format(model_path,label_path)
             so_output.append(out)
             so_output.append(consensus_out)
+            so_output.append(cv_consensus_out)
             fold_matching[model_path] = fold_idx
             bc = '.bc' if 'bc' in model_path else ''
             task = model_path.split('.')[1] + bc
@@ -55,10 +63,12 @@ for model_id in model_ids:
             model_path,fold_idx,label_path = line.split(',')
             model_path = os.path.split(model_path)[-1]
             for i,label_path in enumerate(labels):
-                out = 'ev-scores/mo_{}.{}'.format(model_path,label_path) + ".csv"
-                consensus_out = 'ev-scores-consensus/mo_{}.{}'.format(model_path,label_path) + ".csv"
+                out = 'ev-scores/mo_{}.{}.csv'.format(model_path,label_path)
+                consensus_out = 'ev-scores-consensus/mo_{}.{}.csv'.format(model_path,label_path)
+                cv_consensus_out = 'cv-scores-consensus/mo_{}.{}.csv'.format(model_path,label_path)
                 mo_output.append(out)
                 mo_output.append(consensus_out)
+                mo_output.append(cv_consensus_out)
                 fold_matching[model_path] = fold_idx
                 bc = '.bc' if 'bc' in model_path else ''
                 task = 'mo_' + label_path + bc
@@ -118,6 +128,30 @@ rule test_so_consensus:
             --n_cells_consensus {params.n_cells} > {output}
         """
 
+rule cv_so_consensus:
+    input:
+        model = 'models/{model_path}',
+        labels = 'labels/{label_path}.csv'
+    output:
+        'cv-scores-consensus/{model_path}.{label_path}.csv'
+    params:
+        fold = lambda wcs: fold_matching[wcs.model_path],
+        bc = has_bc_cv,
+        threshold = values['threshold'],
+        n_cells = values['n_cells']
+
+    shell:
+        """
+        python3 scripts/cv_for_consensus.py \
+            --dataset_path datasets/wbc_subset.h5 \
+            --dataset_path datasets/rbc_subset.h5 \
+            --model_path {input.model} \
+            --labels_path {input.labels} {params.bc} \
+            --excluded_ids $(cat excluded_ids) \
+            --threshold {params.threshold} \
+            --n_cells_consensus {params.n_cells} > {output}
+        """
+
 rule test_mo:
     input:
         model = 'models/{model_path}',
@@ -162,6 +196,31 @@ rule test_mo_consensus:
             --training_dataset_path datasets/rbc_subset.h5 \
             --model_path {input.model} \
             --fold {params.fold} \
+            --labels_path {input.labels} {params.bc} --ob {params.layer} \
+            --excluded_ids $(cat excluded_ids) \
+            --threshold {params.threshold} \
+            --n_cells_consensus {params.n_cells} > {output}
+        """
+
+rule cv_mo_consensus:
+    input:
+        model = 'models/{model_path}',
+        labels = 'labels/{label_path}.csv'
+    output:
+        'cv-scores-consensus/mo_{model_path}.{label_path}.csv'
+    params:
+        fold = lambda wcs: fold_matching[wcs.model_path],
+        layer = lambda wcs: layer_matching[wcs.label_path],
+        bc = has_bc_cv,
+        threshold = values['threshold'],
+        n_cells = values['n_cells']
+
+    shell:
+        """
+        python3 scripts/cv_for_consensus.py \
+            --dataset_path datasets/wbc_subset.h5 \
+            --dataset_path datasets/rbc_subset.h5 \
+            --model_path {input.model} \
             --labels_path {input.labels} {params.bc} --ob {params.layer} \
             --excluded_ids $(cat excluded_ids) \
             --threshold {params.threshold} \
