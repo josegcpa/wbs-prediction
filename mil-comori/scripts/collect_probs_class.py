@@ -1,16 +1,24 @@
 import os
-from glob import glob
 import argparse
+from glob import glob
 
 parser = argparse.ArgumentParser(description='Collect metrics.')
 parser.add_argument('--log_files',dest='log_files',
-                    nargs='+',help="Log files from MILe-ViCe")
+                    nargs='+',help="Log files from MIL-CoMorI")
 parser.add_argument('--subset',dest='subset',
                     action='store_true',default='full',
                     help="Whether or not all features are used [full,subset]")
+parser.add_argument('--multiclass',dest='multiclass',
+                    action='store_true',
+                    help="Whether or not the model is multiclass (>2 classes)")
 args = parser.parse_args()
 
 all_csv_files = args.log_files
+
+if args.multiclass == True:
+    all_csv_files = [x for x in all_csv_files if 'multi_class' in x]
+else:
+    all_csv_files = [x for x in all_csv_files if 'multi_class' not in x]
 
 all_metrics = {}
 
@@ -33,24 +41,16 @@ for F in all_csv_files:
     if 'dem' in d[-1]:
         datasets.append('dem')
     datasets = '_'.join(datasets)
-    all_metrics[F] = {'TRAIN':{},'TEST':{}}
+    try:
+        nvc = int(d[-1].split('_')[0])
+    except:
+        nvc = int(d[-2])
+
     with open(F) as o:
         for line in o:
             line = line.strip()
-            if 'TRAIN' in line or 'TEST' in line:
+            if 'PROBS_CLASS' in line:
                 tt,fold,metric = line.split(',')[0:3]
                 task = line.split(',')[-1]
-                line = '{},{},{},{}'.format(line,name,datasets,subset)
-                if task not in all_metrics[F][tt]:
-                    all_metrics[F][tt][task] = {}
-                if fold not in all_metrics[F][tt][task]:
-                    all_metrics[F][tt][task][fold] = {metric:line}
-                else:
-                    all_metrics[F][tt][task][fold][metric] = line
-
-for F in all_metrics:
-    for tt in ['TRAIN','TEST']:
-        for task in all_metrics[F][tt]:
-            for fold in all_metrics[F][tt][task]:
-                for metric in all_metrics[F][tt][task][fold]:
-                    print(all_metrics[F][tt][task][fold][metric])
+                line = '{},{},{},{},{}'.format(line,name,nvc,datasets,subset)
+                print(line)

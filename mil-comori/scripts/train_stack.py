@@ -13,7 +13,7 @@ from metrics import *
 if __name__ == "__main__":
     print("Reading cmd line arguments...")
     parser = argparse.ArgumentParser(
-        description='Train MILe-ViCe.')
+        description='Train MIL-CoMorI.')
 
     parser.add_argument('--n_virtual_cells',dest='n_virtual_cells',
                         action='store',type=int,default=20,

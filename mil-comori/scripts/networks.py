@@ -1,6 +1,6 @@
 import torch
 
-# MILe-ViCe model specification
+# MIL-CoMorI model specification
 
 class VirtualCellClassifier(torch.nn.Module):
     def __init__(self,

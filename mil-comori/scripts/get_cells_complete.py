@@ -30,7 +30,7 @@ if __name__ == "__main__":
                         help="Path for hdf5 containing cell segmentations")
     parser.add_argument('--model_path',dest='model_path',
                         action='store',type=str,default=None,
-                        help="Path for MILe-ViCe model")
+                        help="Path for MIL-CoMorI model")
     parser.add_argument('--output_path',dest='output_path',
                         action='store',type=str,default=None,
                         help="HDF5 output path for VCT class + images")

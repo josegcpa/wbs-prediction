@@ -3,7 +3,7 @@ import sys
 import numpy as np
 from tqdm import tqdm
 
-# Dumps a MILe-ViCe dataset to an output file as a CSV format
+# Dumps a MIL-CoMorI dataset to an output file as a CSV format
 
 H5_FILE = sys.argv[1] # path to hdf5 file
 OUTPUT_FILE = sys.argv[2] # path to output file

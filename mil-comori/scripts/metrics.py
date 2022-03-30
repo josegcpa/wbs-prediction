@@ -1,7 +1,7 @@
 import torch
 from sklearn import metrics
 
-# Metric functions for MILe-ViCe
+# Metric functions for MIL-CoMorI
 
 def precision(metric_dict):
     tp = metric_dict['tp'].sum(axis=0).float()

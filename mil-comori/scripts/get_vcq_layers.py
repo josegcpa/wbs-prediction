@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--model_path',dest='model_path',
                         action='store',type=str,default=None,
-                        help="Path to MILe-ViCe model")
+                        help="Path to MIL-CoMorI model")
     parser.add_argument('--fold',dest='fold',
                         action='store',type=int,default=0,
                         help="Model fold")

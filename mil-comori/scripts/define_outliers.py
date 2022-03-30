@@ -3,7 +3,7 @@ import sys
 import numpy as np
 from tqdm import tqdm
 
-# defines outliers for MILe-ViCe datasets
+# defines outliers for MIL-CoMorI datasets
 
 H5_FILE = sys.argv[1]
 

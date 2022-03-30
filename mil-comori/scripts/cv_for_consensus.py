@@ -12,7 +12,7 @@ from metrics import *
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description='Tests MILe-ViCe models with consensual VCTs.')
+        description='Tests MIL-CoMorI models with consensual VCTs.')
 
     parser.add_argument('--dataset_path',dest='dataset_path',action='append',
                         type=str,default=None,
@@ -22,10 +22,10 @@ if __name__ == "__main__":
                         help="Path for tabular datasets")
     parser.add_argument('--model_path',dest='model_path',action='store',
                         type=str,default=None,
-                        help="Path for MILe-ViCe model")
+                        help="Path for MIL-CoMorI model")
     parser.add_argument('--ob',dest='ob',action='store',
                         type=int,default=0,
-                        help="Objective index (if MILe-ViCe is multi-objective)")
+                        help="Objective index (if MIL-CoMorI is multi-objective)")
     parser.add_argument('--subset',dest='subset',action='store',
                         type=int,default=500,
                         help="Subset cells for prediction")
