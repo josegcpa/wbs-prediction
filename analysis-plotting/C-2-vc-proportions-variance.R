@@ -245,13 +245,13 @@ representative_slides <- merge(rbc_counts,wbc_counts,by = c("slide_id","dataset"
   unlist
 
 so_layers <- paste(Filter(
-  nchar,c("../mile-vice/best_models/best_layers",output_str)),collapse="_")
+  nchar,c("../mil-comori/best_models/best_layers",output_str)),collapse="_")
 mo_layers <- paste(Filter(
-  nchar,c("../mile-vice/best_models/best_layers_mo",output_str)),collapse="_")
+  nchar,c("../mil-comori/best_models/best_layers_mo",output_str)),collapse="_")
 vcq_layers <- paste(Filter(
-  nchar,c("../mile-vice/best_models/best_vcq_layers",output_str)),collapse="_")
+  nchar,c("../mil-comori/best_models/best_vcq_layers",output_str)),collapse="_")
 vcq_layers_mo <- paste(Filter(
-  nchar,c("../mile-vice/best_models/best_vcq_layers_mo",output_str)),collapse="_")
+  nchar,c("../mil-comori/best_models/best_vcq_layers_mo",output_str)),collapse="_")
 wbc_subset_path <- NULL
 rbc_subset_path <- NULL
 if (grepl("subset",output_str)){
@@ -284,11 +284,11 @@ all_consensus_mo <- list()
 
 for (model in unique(best_layers_subset$model_name)) {
   task_name <- str_split(model,"\\.")[[1]][2]
-  path <- sprintf("../mile-vice/cell-proportions/mll/%s.csv",model)
+  path <- sprintf("../mil-comori/cell-proportions/mll/%s.csv",model)
   proportions <- read_proportions(path)
   proportions$model_name <- model
   all_cell_proportions[[model]] <- proportions
-  path <- sprintf("../mile-vice/ev-scores-consensus/%s.%s.csv",model,task_name)
+  path <- sprintf("../mil-comori/ev-scores-consensus/%s.%s.csv",model,task_name)
   consensus <- read_consensus(path)
   consensus$model_name <- model
   consensus$is_consensual <- T
@@ -301,7 +301,7 @@ blmt <- best_layers_subset_mo %>%
 
 for (i in 1:nrow(blmt)) {
   model <- blmt$model_name[i]
-  path <- sprintf("../mile-vice/cell-proportions/mll/%s.csv",model)
+  path <- sprintf("../mil-comori/cell-proportions/mll/%s.csv",model)
   proportions <- read_proportions(path) %>%
     distinct
   proportions$model_name <- model
@@ -311,7 +311,7 @@ for (i in 1:nrow(blmt)) {
 for (i in 1:nrow(blmt)) {
   model <- blmt$model_name[i]
   task_name <- multi_objective_matching[blmt$task_idx[i]+1]
-  path <- sprintf("../mile-vice/ev-scores-consensus/mo_%s.%s.csv",model,task_name)
+  path <- sprintf("../mil-comori/ev-scores-consensus/mo_%s.%s.csv",model,task_name)
   consensus <- read_consensus(path)
   consensus$model_name <- model
   consensus$task_idx <- blmt$task_idx[i]
@@ -394,7 +394,12 @@ wbc_variances <- wbc_all_cells_summaries  %>%
 
 vc_proportions_wide <- full_proportions_cell_type_mo %>%
   subset(data_type == "Morphology + B.C." & is_consensual == T) %>% 
-  mutate(virtual_cell_type = paste0(cell_type,virtual_cell_type)) %>%
+  mutate(tmp = as.numeric(vct_conversion(virtual_cell_type,cell_type))) %>% 
+  group_by(cell_type) %>%
+  mutate(tmp = ifelse(is.na(tmp),max(tmp,na.rm=T) + as.numeric(as.factor(virtual_cell_type)),tmp)) %>%
+  ungroup %>%
+  mutate(virtual_cell_type = paste0(cell_type,tmp)) %>%
+  select(-tmp) %>%
   select(-cell_type,-model_name,-`0`,-`1`,-class_difference,-fold) %>%
   distinct %>% 
   group_by(virtual_cell_type,task_idx) %>%
@@ -573,13 +578,13 @@ do.call(rbind,all_coefficient_associations) %>%
         legend.key.width = unit(0.1,"cm"),axis.title = element_blank(),
         panel.border = element_rect(fill=NA)) + 
   facet_grid(task + cell_type ~ .,scales = "free_y",space = "free_y") + 
-  ggsave(sprintf("figures/%s/mile-vice-vct-variance-association.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-vct-variance-association.pdf",output_str),
          width = 4,height = 5.5)
 
 rbc_merged %>%
   subset(task_idx == "binary") %>% 
   mutate(coarse_class.x = ifelse(coarse_class.x == "Normal","Normal","Disease")) %>% 
-  ggplot(aes(x = RBC7,y = RBC16,size = mass_displacement_green.variance,colour = coarse_class.x,
+  ggplot(aes(x = RBC1,y = RBC16,size = mass_displacement_green.variance,colour = coarse_class.x,
              fill = coarse_class.x)) +
   geom_smooth(method = "glm",formula = y ~ x,alpha = 0.2,size = 0.25) +
   geom_point(alpha = 0.2) +
@@ -592,16 +597,16 @@ rbc_merged %>%
   scale_size(name = NULL,range = c(0.2,5)) + 
   scale_colour_manual(values = fine_colours,breaks = c("Normal","Disease"),name = NULL) + 
   scale_fill_manual(values = fine_colours,breaks = c("Normal","Disease"),name = NULL) +
-  xlab("RBC7 (A) proportion") +
+  xlab("RBC1 proportion") +
   ylab("RBC16 proportion") + 
   guides(colour = guide_legend(nrow = 2)) + 
-  ggsave(sprintf("figures/%s/mile-vice-vct-variance-association-example-1.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-vct-variance-association-example-1.pdf",output_str),
          width = 2,height = 2)
 
 wbc_merged %>%
   subset(task_idx == "binary") %>% 
   mutate(coarse_class.x = ifelse(coarse_class.x == "Normal","Normal","Disease")) %>% 
-  ggplot(aes(x = WBC14,y = perimeter_separate_nuclear.variance,colour = coarse_class.x,
+  ggplot(aes(x = WBC1,y = perimeter_separate_nuclear.variance,colour = coarse_class.x,
              fill = coarse_class.x)) +
   geom_smooth(method = "glm",formula = y ~ x,alpha = 0.2,size = 0.25) +
   geom_point(alpha = 0.5,size = 0.25) +
@@ -610,15 +615,15 @@ wbc_merged %>%
   scale_size(name = "Variance",range = c(1,7)) + 
   scale_colour_manual(values = fine_colours,breaks = c("Normal","Disease"),name = NULL) + 
   scale_fill_manual(values = fine_colours,breaks = c("Normal","Disease"),name = NULL) + 
-  xlab("WBC14 (C) proportion") + 
+  xlab("WBC1 proportion") + 
   ylab("var(WBC nuclear perimeter)") + 
-  ggsave(sprintf("figures/%s/mile-vice-vct-variance-association-example-2.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-vct-variance-association-example-2.pdf",output_str),
          width = 1.7,height = 1.7)
 
 wbc_merged %>%
   subset(task_idx == "disease_binary" & coarse_class.x != "Normal") %>% 
   subset(slide_id != "XVI_6") %>%
-  ggplot(aes(x = WBC11,y = convexity.variance,colour = coarse_class.x,
+  ggplot(aes(x = WBC3,y = convexity.variance,colour = coarse_class.x,
              fill = coarse_class.x)) +
   geom_smooth(method = "glm",formula = y ~ x,alpha = 0.2,size = 0.25) +
   geom_point(alpha = 0.5,size = 0.25) +
@@ -629,9 +634,9 @@ wbc_merged %>%
                       breaks = c("MDS","Anaemia"),name = NULL) + 
   scale_fill_manual(values = fine_colours,
                     breaks = c("MDS","Anaemia"),name = NULL) + 
-  xlab("WBC11 (G)") + 
+  xlab("WBC3") + 
   ylab("var(WBC convexity)") + 
-  ggsave(sprintf("figures/%s/mile-vice-vct-variance-association-example-3.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-vct-variance-association-example-3.pdf",output_str),
          width = 1.7,height = 1.7)
 
 # feature distributions vs. vct -------------------------------------------
@@ -743,7 +748,7 @@ wbc_many_cells %>%
   scale_fill_manual(values = fine_colours,breaks = c("Normal","Disease")) +
   scale_colour_manual(values = fine_colours,breaks = c("Normal","Disease"),guide=F) + 
   coord_cartesian(xlim = c(NA,450)) + 
-  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-wbc-nuclear-perimeter.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-density-vs-vct-wbc-nuclear-perimeter.pdf",output_str),
          width = 3.5,height = 2)
 
 # RBC disease classification plots - cdf std
@@ -786,7 +791,7 @@ rbc_many_cells %>%
   scale_colour_manual(values = fine_colours,breaks = c("MDS","Anaemia"),guide = F) +
   scale_alpha(guide = F) +
   #coord_cartesian(xlim = c(10,NA)) +
-  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-rbc-std-cdf.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-density-vs-vct-rbc-std-cdf.pdf",output_str),
          width = 3.5,height = 2)
 
 # WBC disease classification plots - convexity
@@ -829,7 +834,7 @@ wbc_many_cells %>%
   scale_colour_manual(values = fine_colours,breaks = c("MDS","Anaemia"),guide = F) + 
   scale_alpha(guide = F) +
   coord_cartesian(xlim = c(0.84,0.97)) +
-  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-wbc-convexity.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-density-vs-vct-wbc-convexity.pdf",output_str),
          width = 3.5,height = 2)
 
 # RBC SF3B1 plots - mean cdf
@@ -871,7 +876,7 @@ rbc_many_cells %>%
   scale_fill_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype")) +
   scale_colour_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype"),guide=F) +
   scale_alpha(guide = F) +
-  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-rbc-cdf-mean.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-density-vs-vct-rbc-cdf-mean.pdf",output_str),
          width = 3.5,height = 2)
 
 # RBC SF3B1 plots - area
@@ -913,7 +918,7 @@ rbc_many_cells %>%
   scale_fill_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype")) +
   scale_colour_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype"),guide=F) +
   scale_alpha(guide = F) +
-  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-rbc-area.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-density-vs-vct-rbc-area.pdf",output_str),
          width = 3.5,height = 2)
 
 # WBC SF3B1 plots - nuclear convexity
@@ -954,7 +959,7 @@ wbc_many_cells %>%
         legend.position = "bottom",legend.box.spacing = unit(0.05,"cm")) + 
   scale_fill_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype")) +
   scale_colour_manual(values = fine_colours,breaks = c("SF3B1-mutant","SF3B1-wildtype"),guide=F) +
-  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-wbc-nuclear-convexity.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-density-vs-vct-wbc-nuclear-convexity.pdf",output_str),
          width = 3.5,height = 2)
 
 # WBC anaemia plots - solidity
@@ -999,7 +1004,7 @@ wbc_many_cells %>%
   scale_alpha(guide = F) +
   coord_cartesian(xlim = c(NA,1.3)) + 
   scale_x_continuous(breaks = c(1,1.1,1.2,1.3,1.4,1.5)) +
-  ggsave(sprintf("figures/%s/mile-vice-density-vs-vct-wbc-solidty.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-density-vs-vct-wbc-solidty.pdf",output_str),
          width = 3.5,height = 2)
 
 # feature wise variance values

@@ -1237,7 +1237,7 @@ feature_associations_df %>%
   writeLines(file_connection)
 close(file_connection)
 file.copy("data_output/wbc_feature_subset",
-          "../mile-vice/scripts/wbc_feature_subset",
+          "../mil-comori/scripts/wbc_feature_subset",
           overwrite = T)
 
 file_connection <- file("data_output/rbc_feature_subset")
@@ -1253,7 +1253,7 @@ feature_associations_df %>%
   writeLines(file_connection)
 close(file_connection)
 file.copy("data_output/rbc_feature_subset",
-          "../mile-vice/scripts/rbc_feature_subset",
+          "../mil-comori/scripts/rbc_feature_subset",
           overwrite = T)
 
 # feature group importance

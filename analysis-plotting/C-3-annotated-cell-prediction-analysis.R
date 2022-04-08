@@ -164,7 +164,7 @@ generate_plots <- function(tmp_data) {
 # inter-individual agreement ----------------------------------------------
 
 wbc_labels <- lapply(
-  list.files(path = "../mile-vice/labelled-cells/output/",
+  list.files(path = "../mil-comori/labelled-cells/output/",
              pattern = "^wbc.+csv",full.names = T),
   read_annotations
 ) %>%
@@ -175,7 +175,7 @@ wbc_labels <- lapply(
   mutate(label = factor(label,levels = rev(wbc_type_conversion)))
 
 wbc_labels_mo <- lapply(
-  list.files(path = "../mile-vice/labelled-cells/output/",
+  list.files(path = "../mil-comori/labelled-cells/output/",
              pattern = "^mo_wbc.+csv",full.names = T),
   read_annotations
 ) %>%
@@ -186,7 +186,7 @@ wbc_labels_mo <- lapply(
   mutate(label = factor(label,levels = rev(wbc_type_conversion)))
 
 rbc_labels <- lapply(
-  list.files(path = "../mile-vice/labelled-cells/output/",
+  list.files(path = "../mil-comori/labelled-cells/output/",
              pattern = "^rbc.+csv",full.names = T),
   read_annotations
 ) %>%
@@ -197,7 +197,7 @@ rbc_labels <- lapply(
   mutate(label = factor(label,levels = rev(rbc_type_conversion)))
 
 rbc_labels_mo <- lapply(
-  list.files(path = "../mile-vice/labelled-cells/output/",
+  list.files(path = "../mil-comori/labelled-cells/output/",
              pattern = "^mo_rbc.+csv",full.names = T),
   read_annotations
 ) %>%
@@ -232,7 +232,7 @@ wbc_labels %>%
   theme_pretty(base_size = 6) +
   theme(axis.text = element_text(colour = "black"),panel.grid.major.y = element_line(size = 0.25,colour = "grey70")) +
   scale_x_continuous(expand = c(0,0,0.2,0),breaks = c(0,0.25,0.5,0.75,1)) +
-  ggsave("figures/mile-vice-annotated-cells-wbc-agreement.pdf",height=1.7,width=3)
+  ggsave("figures/mil-comori-annotated-cells-wbc-agreement.pdf",height=1.7,width=3)
 
 wbc_labels %>% 
   select(center_idx,user,label) %>% 
@@ -256,7 +256,7 @@ wbc_labels %>%
   ylab("Expert annotation") +
   scale_fill_material(name = "Proportion") +
   theme(legend.key.width = unit(0.2,"cm"),axis.text = element_text(colour = "black")) +
-  ggsave("figures/mile-vice-annotated-cells-wbc-agreement-heatmap.pdf",height=2.5,width=3.5)
+  ggsave("figures/mil-comori-annotated-cells-wbc-agreement-heatmap.pdf",height=2.5,width=3.5)
 
 rbc_labels %>% 
   select(center_idx,user,label) %>% 
@@ -276,7 +276,7 @@ rbc_labels %>%
   theme_pretty(base_size = 6) +
   theme(axis.text = element_text(colour = "black")) +
   scale_x_continuous(expand = c(0,0,0.2,0),breaks = c(0,0.25,0.5,0.75,1)) +
-  ggsave("figures/mile-vice-annotated-cells-rbc-agreement.pdf",height=1.7,width=3)
+  ggsave("figures/mil-comori-annotated-cells-rbc-agreement.pdf",height=1.7,width=3)
 
 # proportions per class ---------------------------------------------------
 X <- wbc_labels %>%
@@ -355,7 +355,7 @@ plots <- generate_plots(tmp_data)
 
 plot_grid(plots$heatmap_plot,plots$count_plot,
           align = "h",axis = "lrtb",rel_widths = c(1,0.25),nrow = 1) + 
-  ggsave("figures/mile-vice-annotated-cells-wbc-morphology.pdf",width=4,height=6.5)
+  ggsave("figures/mil-comori-annotated-cells-wbc-morphology.pdf",width=4,height=6.5)
 
 # wbc (morphology + bc) ---------------------------------------------------
 
@@ -367,7 +367,7 @@ plots <- generate_plots(tmp_data)
 
 plot_grid(plots$heatmap_plot,plots$count_plot,
           align = "h",axis = "lrtb",rel_widths = c(1,0.25),nrow = 1) + 
-  ggsave("figures/mile-vice-annotated-cells-wbc-morphology-bc.pdf",width=4,height=6.5)
+  ggsave("figures/mil-comori-annotated-cells-wbc-morphology-bc.pdf",width=4,height=6.5)
 
 tmp_data <- wbc_labels_mo %>%
   subset(data_type == "Morphology + B.C.") %>%
@@ -381,7 +381,7 @@ plots <- tmp_data %>%
   generate_plots()
 plot_grid(plots$heatmap_plot,plots$count_plot,
           align = "h",axis = "lrtb",rel_widths = c(1,0.17),nrow = 1) + 
-  ggsave("figures/mile-vice-annotated-cells-mo-wbc-morphology-bc.pdf",
+  ggsave("figures/mil-comori-annotated-cells-mo-wbc-morphology-bc.pdf",
          height=2,width = 6)
 
 # rbc (morphology) --------------------------------------------------------
@@ -394,7 +394,7 @@ plots <- generate_plots(tmp_data)
 
 plot_grid(plots$heatmap_plot,plots$count_plot,
           align = "h",axis = "lrtb",rel_widths = c(1,0.25),nrow = 1) + 
-  ggsave("figures/mile-vice-annotated-cells-rbc-morphology.pdf",width=4,height=6.5)
+  ggsave("figures/mil-comori-annotated-cells-rbc-morphology.pdf",width=4,height=6.5)
 
 
 # rbc (morphology + bc) ---------------------------------------------------
@@ -407,7 +407,7 @@ plots <- generate_plots(tmp_data)
 
 plot_grid(plots$heatmap_plot,plots$count_plot,
           align = "h",axis = "lrtb",rel_widths = c(1,0.25),nrow = 1) + 
-  ggsave("figures/mile-vice-annotated-cells-rbc-morphology-bc.pdf",width=4,height=6.5)
+  ggsave("figures/mil-comori-annotated-cells-rbc-morphology-bc.pdf",width=4,height=6.5)
 
 tmp_data <- rbc_labels_mo %>%
   subset(data_type == "Morphology + B.C.") %>%
@@ -421,6 +421,6 @@ plots <- tmp_data %>%
   generate_plots()
 plot_grid(plots$heatmap_plot,plots$count_plot,
           align = "h",axis = "lrtb",rel_widths = c(1,0.17),nrow = 1) + 
-  ggsave("figures/mile-vice-annotated-cells-mo-rbc-morphology-bc.pdf",
+  ggsave("figures/mil-comori-annotated-cells-mo-rbc-morphology-bc.pdf",
          height=2,width = 6)
 

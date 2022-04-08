@@ -27,7 +27,7 @@ pattern <- ifelse(
   "full" == output_str,
   '^cv\\.',sprintf('^cv_%s\\.',gsub("full_","",output_str)))
 all_auc_validation <- list()
-for (file_path in list.files("../mile-vice/ev-scores/",pattern = pattern,full.names = T)) {
+for (file_path in list.files("../mil-comori/ev-scores/",pattern = pattern,full.names = T)) {
   data_type <- ifelse(grepl('bc',file_path),"Morphology + B.C.","Morphology")
   tmp <- read_csv(file_path,col_names = c("model_id","fold","metric","value"))
   N <- tmp$value[tmp$metric == "N_0"]
@@ -37,7 +37,7 @@ for (file_path in list.files("../mile-vice/ev-scores/",pattern = pattern,full.na
     task = decode_model_name(tmp$model_id),dataset = data_type,value = tmp$value,N=N,obj="Single")
 }
 
-for (file_path in list.files("../mile-vice/ev-scores/",pattern = "^mo_cv_subset\\.",full.names = T)) {
+for (file_path in list.files("../mil-comori/ev-scores/",pattern = "^mo_cv_subset\\.",full.names = T)) {
   data_type <- ifelse(grepl('bc',file_path),"Morphology + B.C.","Morphology")
   tmp <- read_csv(file_path,col_names = c("model_id","fold","metric","value"))
   N <- tmp$value[tmp$metric == "N_0"]
@@ -79,7 +79,7 @@ metrics_cv %>%
   coord_flip(ylim = c(0.2,1)) + 
   scale_y_continuous(expand = c(0,0,0.02,0.02)) + 
   scale_color_discrete(guide = F) + 
-  ggsave(filename = sprintf("figures/%s/auc-bars-w-validation-mile-vice.pdf",output_str),
+  ggsave(filename = sprintf("figures/%s/auc-bars-w-validation-mil-comori.pdf",output_str),
          height=1.7,width=3)
 
 metrics_cv <- read_csv(sprintf("data_output/best_models_so_%s.csv",output_str)) %>%
@@ -106,5 +106,5 @@ metrics_cv %>%
   coord_flip(ylim = c(0.2,1)) + 
   scale_y_continuous(expand = c(0,0,0.02,0.02)) + 
   scale_color_discrete(guide = F) + 
-  ggsave(filename = sprintf("figures/%s/auc-bars-w-validation-mile-vice-mo.pdf",output_str),
+  ggsave(filename = sprintf("figures/%s/auc-bars-w-validation-mil-comori-mo.pdf",output_str),
          height=1.7,width=3)

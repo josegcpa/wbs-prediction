@@ -79,12 +79,12 @@ label_conversion <- list(
 path_list <- list(
   probs = ifelse(
     output_str == "full",
-    "../mile-vice/metrics/cv_probs.csv",
-    sprintf("../mile-vice/metrics/cv_%s_probs.csv",gsub("full_","",output_str))),
+    "../mil-comori/metrics/cv_probs.csv",
+    sprintf("../mil-comori/metrics/cv_%s_probs.csv",gsub("full_","",output_str))),
   metrics = ifelse(
     output_str == "full",
-    "../mile-vice/metrics/cv_metrics_df.csv",
-    sprintf("../mile-vice/metrics/cv_%s_metrics_df.csv",gsub("full_","",output_str))))
+    "../mil-comori/metrics/cv_metrics_df.csv",
+    sprintf("../mil-comori/metrics/cv_%s_metrics_df.csv",gsub("full_","",output_str))))
 
 all_metrics <- rbind(
   read_csv(
@@ -170,7 +170,7 @@ all_roc_df %>%
   scale_y_continuous(expand = c(0.01,0.01)) +
   scale_colour_manual(values = c(NA,"black"),guide = F) +
   ggsave(
-    sprintf("figures/%s/mile-vice-cv-performance.pdf",output_str),height = 1.8,width = 3)
+    sprintf("figures/%s/mil-comori-cv-performance.pdf",output_str),height = 1.8,width = 3)
 
 all_roc_df %>%
   select(nvc,task,multi_objective = mo,value = auc_value,dataset = data_type) %>%
@@ -197,7 +197,7 @@ all_roc_df %>%
   scale_colour_manual(values = c("black",NA),guide = F) +
   scale_fill_gradient(low = "lightcyan1",high = "purple",name = "AUC") +
   ggsave(
-    sprintf("figures/%s/mile-vice-cv-performance-tile.pdf",output_str),height = 1.7,width = 3.5)
+    sprintf("figures/%s/mil-comori-cv-performance-tile.pdf",output_str),height = 1.7,width = 3.5)
 
 all_roc_df %>%
   select(nvc,task,multi_objective = mo,value = auc_value,dataset = data_type) %>%
@@ -224,7 +224,7 @@ all_roc_df %>%
   xlab("Number of virtual cells") +
   facet_wrap(~ dataset) +
   ggsave(
-    sprintf("figures/%s/mile-vice-cv-performance-lines.pdf",output_str),height = 1.8,width = 2.5)
+    sprintf("figures/%s/mil-comori-cv-performance-lines.pdf",output_str),height = 1.8,width = 2.5)
 
 best_models_so <- all_roc_df %>%
   select(nvc,task,multi_objective = mo,value = auc_value,dataset = data_type) %>%
@@ -314,7 +314,7 @@ best_models_roc_curves_df %>%
   scale_x_continuous(expand = c(0.01,0.01)) +
   scale_y_continuous(expand = c(0.01,0.01)) + 
   ggsave(
-    sprintf("figures/%s/mile-vice-roc-curve.pdf",output_str),height = 2.3,width = 2.3)
+    sprintf("figures/%s/mil-comori-roc-curve.pdf",output_str),height = 2.3,width = 2.3)
 
 best_models_roc_curves_df %>%
   arrange(sensitivity,-specificity) %>% 
@@ -333,7 +333,7 @@ best_models_roc_curves_df %>%
   scale_x_continuous(expand = c(0.01,0.01)) +
   scale_y_continuous(expand = c(0.01,0.01)) + 
   ggsave(
-    sprintf("figures/%s/mile-vice-roc-curve-mo.pdf",output_str),height = 2.3,width = 2.3)
+    sprintf("figures/%s/mil-comori-roc-curve-mo.pdf",output_str),height = 2.3,width = 2.3)
 
 # compare with glmnet -----------------------------------------------------
 
@@ -343,7 +343,7 @@ glmnet_scores <- read.csv("data_output/glmnet-auroc.csv") %>%
   merge(rbind(best_models_so,best_models_mo),
         by = c("task","dataset")) %>%
   gather(key = "key",value = "value",value,glmnet_auc) %>%
-  mutate(key = ifelse(key == "glmnet_auc","glmnet","MILe-ViCe")) %>%
+  mutate(key = ifelse(key == "glmnet_auc","glmnet","mil-comori")) %>%
   mutate(mo = multi_objective) %>%
   subset(!(mo == T & key == "glmnet")) %>%
   mutate(task = factor(
@@ -378,12 +378,12 @@ ggplot(glmnet_scores,aes(x = task,y = value,fill = key)) +
         legend.key.size = unit(0.2,"cm"),
         panel.spacing = unit(1.5,"lines")) +
   ggsave(
-    sprintf("figures/%s/mile-vice-vs-glmnet.pdf",output_str),height = 1.5,width = 4)
+    sprintf("figures/%s/mil-comori-vs-glmnet.pdf",output_str),height = 1.5,width = 4)
   
 spread(glmnet_scores,key = "key",value = "value") %>%
   group_by(dataset,task) %>%
   mutate(glmnet = ifelse(is.na(glmnet),glmnet[!is.na(glmnet)][1],glmnet)) %>%
-  ggplot(aes(x = glmnet,y = `MILe-ViCe`,colour = dataset,shape = mo)) + 
+  ggplot(aes(x = glmnet,y = `mil-comori`,colour = dataset,shape = mo)) + 
   geom_abline(slope = 1,linetype = 3,alpha = 0.5,size = 0.5) +
   geom_point(size = 1) + 
   geom_line(aes(group = paste(dataset,task)),size = 0.25) + 
@@ -391,7 +391,7 @@ spread(glmnet_scores,key = "key",value = "value") %>%
                   size = 2,min.segment.length = 0.1,colour = "black") +
   scale_x_continuous(labels = function(x) sprintf("%.1f%%",x*100)) + 
   scale_y_continuous(labels = function(x) sprintf("%.1f%%",x*100)) + 
-  ylab("MILe-ViCe AUC") +
+  ylab("mil-comori AUC") +
   xlab("glmnet AUC") +
   coord_cartesian(xlim = c(0.8,1),ylim = c(0.8,1)) +
   theme_pretty(base_size = 6) + 
@@ -404,4 +404,4 @@ spread(glmnet_scores,key = "key",value = "value") %>%
   guides(colour = guide_legend(nrow = 2),
          shape = guide_legend(nrow = 2)) +
   ggsave(
-    sprintf("figures/%s/mile-vice-vs-glmnet-scatter.pdf",output_str),height = 2.5,width = 2.5)
+    sprintf("figures/%s/mil-comori-vs-glmnet-scatter.pdf",output_str),height = 2.5,width = 2.5)

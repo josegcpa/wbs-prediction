@@ -156,14 +156,14 @@ feat_conv <- rev(gsub('\n',' ',features_conversion))
 
 best_vcq_subset <- rbind(
   read_vcq_layer(
-    path = "../mile-vice/best_models/best_vcq_layers_subset",
+    path = "../mil-comori/best_models/best_vcq_layers_subset",
     wbc_subset_path = "data_output/wbc_feature_subset",
     rbc_subset_path = "data_output/rbc_feature_subset") %>%
     mutate(virtual_cell_type_fctr = paste(
       decode_model_name(model_name),data_type,cell_type,virtual_cell_type)) %>%
     mutate(feature = factor(feat_conv[feature],levels = feat_conv)),
   read_vcq_layer(
-    path = "../mile-vice/best_models/best_vcq_layers_mo_subset",
+    path = "../mil-comori/best_models/best_vcq_layers_mo_subset",
     wbc_subset_path = "data_output/wbc_feature_subset",
     rbc_subset_path = "data_output/rbc_feature_subset") %>%
     mutate(virtual_cell_type_fctr = paste(data_type,cell_type,virtual_cell_type)) %>%

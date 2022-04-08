@@ -164,13 +164,13 @@ subset_vcq <- function(best_vcq_subset,S) {
 # data loading and processing ---------------------------------------------
 
 so_layers <- paste(Filter(
-  nchar,c("../mile-vice/best_models/best_layers",output_str)),collapse="_")
+  nchar,c("../mil-comori/best_models/best_layers",output_str)),collapse="_")
 mo_layers <- paste(Filter(
-  nchar,c("../mile-vice/best_models/best_layers_mo",output_str)),collapse="_")
+  nchar,c("../mil-comori/best_models/best_layers_mo",output_str)),collapse="_")
 vcq_layers <- paste(Filter(
-  nchar,c("../mile-vice/best_models/best_vcq_layers",output_str)),collapse="_")
+  nchar,c("../mil-comori/best_models/best_vcq_layers",output_str)),collapse="_")
 vcq_layers_mo <- paste(Filter(
-  nchar,c("../mile-vice/best_models/best_vcq_layers_mo",output_str)),collapse="_")
+  nchar,c("../mil-comori/best_models/best_vcq_layers_mo",output_str)),collapse="_")
 wbc_subset_path <- NULL
 rbc_subset_path <- NULL
 if (grepl("subset",output_str)){
@@ -203,11 +203,11 @@ all_consensus_mo <- list()
 
 for (model in unique(best_layers_subset$model_name)) {
   task_name <- str_split(model,"\\.")[[1]][2]
-  path <- sprintf("../mile-vice/cell-proportions/mll/%s.csv",model)
+  path <- sprintf("../mil-comori/cell-proportions/mll/%s.csv",model)
   proportions <- read_proportions(path)
   proportions$model_name <- model
   all_cell_proportions[[model]] <- proportions
-  path <- sprintf("../mile-vice/ev-scores-consensus/%s.%s.csv",model,task_name)
+  path <- sprintf("../mil-comori/ev-scores-consensus/%s.%s.csv",model,task_name)
   consensus <- read_consensus(path)
   consensus$model_name <- model
   consensus$is_consensual <- T
@@ -220,7 +220,7 @@ blmt <- best_layers_subset_mo %>%
 
 for (i in 1:nrow(blmt)) {
   model <- blmt$model_name[i]
-  path <- sprintf("../mile-vice/cell-proportions/mll/%s.csv",model)
+  path <- sprintf("../mil-comori/cell-proportions/mll/%s.csv",model)
   proportions <- read_proportions(path) %>%
     distinct
   proportions$model_name <- model
@@ -230,7 +230,7 @@ for (i in 1:nrow(blmt)) {
 for (i in 1:nrow(blmt)) {
   model <- blmt$model_name[i]
   task_name <- multi_objective_matching[blmt$task_idx[i]+1]
-  path <- sprintf("../mile-vice/ev-scores-consensus/mo_%s.%s.csv",model,task_name)
+  path <- sprintf("../mil-comori/ev-scores-consensus/mo_%s.%s.csv",model,task_name)
   consensus <- read_consensus(path)
   consensus$model_name <- model
   consensus$task_idx <- blmt$task_idx[i]
@@ -333,7 +333,7 @@ tmp_data %>%
   generic_objects$scale_shape +
   generic_objects$scale_alpha +
   scale_colour_manual(values = fine_colours,name = NULL,breaks = c("Normal","Disease")) +
-  ggsave(sprintf("figures/%s/mile-vice-so-disease-detection-consensus.pdf",output_str),device=cairo_pdf,height=H,width=W)
+  ggsave(sprintf("figures/%s/mil-comori-so-disease-detection-consensus.pdf",output_str),device=cairo_pdf,height=H,width=W)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -341,11 +341,11 @@ curr_vcq <- subset_vcq(best_vcq_subset,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-so-disease-detection-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-so-disease-detection-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-so-disease-detection-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-so-disease-detection-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # Disease classification 
 
@@ -387,7 +387,7 @@ tmp_data %>%
   generic_objects$scale_shape +
   generic_objects$scale_alpha +
   scale_colour_manual(values = fine_colours,name = NULL,breaks = c("MDS","Anaemia")) +
-  ggsave(sprintf("figures/%s/mile-vice-so-disease-classification-consensus.pdf",output_str),device=cairo_pdf,height=H,width=W)
+  ggsave(sprintf("figures/%s/mil-comori-so-disease-classification-consensus.pdf",output_str),device=cairo_pdf,height=H,width=W)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -395,11 +395,11 @@ curr_vcq <- subset_vcq(best_vcq_subset,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-so-disease-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-so-disease-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-so-disease-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-so-disease-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # SF3B1mut detection
 
@@ -444,7 +444,7 @@ tmp_data %>%
   generic_objects$scale_alpha +
   scale_colour_manual(values = c(fine_colours,`log(ratio)` = "grey10"),name = NULL,
                       breaks = c("SF3B1-mutant","SF3B1-wildtype")) + 
-  ggsave(sprintf("figures/%s/mile-vice-so-mds-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mil-comori-so-mds-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -452,11 +452,11 @@ curr_vcq <- subset_vcq(best_vcq_subset,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-so-mds-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-so-mds-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-so-mds-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-so-mds-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # Anaemia detection
 
@@ -499,7 +499,7 @@ tmp_data %>%
   generic_objects$scale_alpha +
   scale_colour_manual(values = c(fine_colours,`log(ratio)` = "grey10"),name = NULL,
                       breaks = c("Iron deficiency","Megaloblastic")) + 
-  ggsave(sprintf("figures/%s/mile-vice-so-anaemia-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mil-comori-so-anaemia-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -507,11 +507,11 @@ curr_vcq <- subset_vcq(best_vcq_subset,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-so-anaemia-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-so-anaemia-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-so-anaemia-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-so-anaemia-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # multiple objective plots ------------------------------------------------
 
@@ -563,7 +563,7 @@ tmp_data %>%
   generic_objects$scale_shape +
   generic_objects$scale_alpha +
   scale_colour_manual(values = fine_colours,name = NULL,breaks = c("Normal","Disease")) +
-  ggsave(sprintf("figures/%s/mile-vice-mo-disease-detection-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mil-comori-mo-disease-detection-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -571,11 +571,11 @@ curr_vcq <- subset_vcq(best_vcq_subset_mo,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-mo-disease-detection-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-disease-detection-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-mo-disease-detection-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-disease-detection-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # Disease classification 
 
@@ -621,7 +621,7 @@ tmp_data %>%
   generic_objects$scale_shape +
   generic_objects$scale_alpha +
   scale_colour_manual(values = fine_colours,name = NULL,breaks = c("MDS","Anaemia")) + 
-  ggsave(sprintf("figures/%s/mile-vice-mo-disease-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mil-comori-mo-disease-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -629,11 +629,11 @@ curr_vcq <- subset_vcq(best_vcq_subset_mo,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-mo-disease-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-disease-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-mo-disease-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-disease-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # SF3B1mut detection
 
@@ -682,7 +682,7 @@ tmp_data %>%
   generic_objects$scale_alpha +
   scale_colour_manual(values = c(fine_colours,`log(ratio)` = "grey10"),name = NULL,
                       breaks = c("SF3B1-mutant","SF3B1-wildtype")) + 
-  ggsave(sprintf("figures/%s/mile-vice-mo-mds-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mil-comori-mo-mds-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -690,11 +690,11 @@ curr_vcq <- subset_vcq(best_vcq_subset_mo,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-mo-mds-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-mds-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-mo-mds-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-mds-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # Anaemia detection
 
@@ -741,7 +741,7 @@ tmp_data %>%
   generic_objects$scale_alpha +
   scale_colour_manual(values = c(fine_colours,`log(ratio)` = "grey10"),name = NULL,
                       breaks = c("Iron deficiency","Megaloblastic")) +
-  ggsave(sprintf("figures/%s/mile-vice-mo-anaemia-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
+  ggsave(sprintf("figures/%s/mil-comori-mo-anaemia-classification-consensus.pdf",output_str),height=H,width=W,device=cairo_pdf)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -749,11 +749,11 @@ curr_vcq <- subset_vcq(best_vcq_subset_mo,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-mo-anaemia-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-anaemia-classification-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-mo-anaemia-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-anaemia-classification-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 label_list <- list(
   `Disease detection` = c("D","C"),
@@ -795,7 +795,7 @@ groups_of_cells_df %>%
   xlab("Virtual cell type") + 
   scale_x_discrete(expand = c(0,0)) + 
   scale_y_discrete(expand = c(0,0)) +
-  ggsave(sprintf("figures/%s/mile-vice-mo-map.pdf",output_str),height=1.3,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-map.pdf",output_str),height=1.3,width=4.5)
 
 # multiple objective correlations -----------------------------------------
 
@@ -830,7 +830,7 @@ tmp_data %>%
     legend.key.size = unit(0,"cm"),
     strip.text = element_text(margin = ggplot2::margin()),
     strip.background = element_rect(fill = NA,color = NA)) + 
-  ggsave(sprintf("figures/%s/mile-vice-multiple-objective-median-effect-consensus.pdf",output_str),height=1.5,width=3)
+  ggsave(sprintf("figures/%s/mil-comori-multiple-objective-median-effect-consensus.pdf",output_str),height=1.5,width=3)
 
 S <- sort(unique(tmp_data$virtual_cell_type_fctr))
 
@@ -838,11 +838,11 @@ curr_vcq <- subset_vcq(best_vcq_subset_mo,S)
 
 subset(curr_vcq,cell_type == 'RBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-mo-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-coefficients-rbc-consensus.pdf",output_str),height=3.3,width=4.5)
 
 subset(curr_vcq,cell_type == 'WBC') %>% 
   coefficients_plot +
-  ggsave(sprintf("figures/%s/mile-vice-mo-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
+  ggsave(sprintf("figures/%s/mil-comori-mo-coefficients-wbc-consensus.pdf",output_str),height=4.2,width=4.5)
 
 # slide-similarity heatmap ------------------------------------------------
 
@@ -897,7 +897,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave(sprintf("figures/%s/mile-vice-heatmap-distance-rbc-consensus.pdf",output_str),height = 4.5,width = 5)
+  ggsave(sprintf("figures/%s/mil-comori-heatmap-distance-rbc-consensus.pdf",output_str),height = 4.5,width = 5)
 
 all_heatmaps <- list()
 for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T)) {
@@ -950,7 +950,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave(sprintf("figures/%s/mile-vice-heatmap-distance-wbc-consensus.pdf",output_str),height = 4.5,width = 5)
+  ggsave(sprintf("figures/%s/mil-comori-heatmap-distance-wbc-consensus.pdf",output_str),height = 4.5,width = 5)
 
 all_heatmaps <- list()
 for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T)) {
@@ -1003,7 +1003,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave(sprintf("figures/%s/mile-vice-heatmap-distance-consensus.pdf",output_str),height = 4.5,width = 5)
+  ggsave(sprintf("figures/%s/mil-comori-heatmap-distance-consensus.pdf",output_str),height = 4.5,width = 5)
 
 all_heatmaps <- list()
 for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T)) {
@@ -1058,7 +1058,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave(sprintf("figures/%s/mile-vice-heatmap-distance-mo-consensus.pdf",output_str),height = 4.5,width = 5)
+  ggsave(sprintf("figures/%s/mil-comori-heatmap-distance-mo-consensus.pdf",output_str),height = 4.5,width = 5)
 
 # virtual cell composition heatmap ----------------------------------------
 
@@ -1111,7 +1111,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave(sprintf("figures/%s/mile-vice-heatmap-vc-consensus.pdf",output_str),height = 6.5,width = 5.5)
+  ggsave(sprintf("figures/%s/mil-comori-heatmap-vc-consensus.pdf",output_str),height = 6.5,width = 5.5)
 
 all_heatmaps <- list()
 for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T)) {
@@ -1164,7 +1164,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave(sprintf("figures/%s/mile-vice-heatmap-vc-mo-consensus.pdf",output_str),height = 6.5,width = 5.5)
+  ggsave(sprintf("figures/%s/mil-comori-heatmap-vc-mo-consensus.pdf",output_str),height = 6.5,width = 5.5)
 
 
 # virtual cell composition heatmap (class-sorting) ------------------------
@@ -1240,7 +1240,7 @@ for (M in grep("\\.bc",unique(full_proportions_cell_type$model_name),value = T))
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave(sprintf("figures/%s/mile-vice-heatmap-vc-consensus-class.pdf",output_str),height = 8,width = 6.5)
+  ggsave(sprintf("figures/%s/mil-comori-heatmap-vc-consensus-class.pdf",output_str),height = 8,width = 6.5)
 
 blmt <- full_proportions_cell_type_mo %>%
   select(model_name,task_idx) %>%
@@ -1326,7 +1326,7 @@ for (i in 1:nrow(blmt)) {
 }
 
 plot_grid(plotlist = all_heatmaps,ncol = 2) + 
-  ggsave(sprintf("figures/%s/mile-vice-heatmap-vc-mo-consensus-class.pdf",output_str),height = 8,width = 6.5)
+  ggsave(sprintf("figures/%s/mil-comori-heatmap-vc-mo-consensus-class.pdf",output_str),height = 8,width = 6.5)
 
 # proportion correlations (validation) ------------------------------------
 
@@ -1353,7 +1353,7 @@ conversion_list_order <- c(
 all_cell_proportions_val <- list()
 
 for (model in unique(best_layers_subset$model_name)) {
-  path <- sprintf("../mile-vice/cell-proportions/adden_2/%s.csv",model)
+  path <- sprintf("../mil-comori/cell-proportions/adden_2/%s.csv",model)
   proportions_val <- read_proportions(path)
   proportions_val$model_name <- model
   all_cell_proportions_val[[model]] <- proportions_val
@@ -1414,7 +1414,7 @@ comparison_df %>%
   theme(legend.key.size = unit(0.1,"cm"),legend.margin = margin()) + 
   scale_shape(name = "Dataset") + 
   scale_colour_aaas(name = NULL) + 
-  ggsave(sprintf("figures/%s/mile-vice-proportion-correlations-consensus.pdf",output_str),height = 1.5,width = 4)
+  ggsave(sprintf("figures/%s/mil-comori-proportion-correlations-consensus.pdf",output_str),height = 1.5,width = 4)
 
 comparison_df %>%
   mutate(data_type = ifelse(grepl('\\.bc',model_name),'Morphology + B.C.',"Morphology"),
@@ -1435,7 +1435,7 @@ comparison_df %>%
   ylab("Proportion distribution in validation data") + 
   scale_colour_manual(values = c("red4","darkorchid"),guide = F) + 
   theme(legend.key.size = unit(0,"cm")) +
-  ggsave(sprintf("figures/%s/mile-vice-proportion-correlations-morph-consensus.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-proportion-correlations-morph-consensus.pdf",output_str),
          width = 5,height = 2.5)
 
 comparison_df %>%
@@ -1458,7 +1458,7 @@ comparison_df %>%
   ylab("Proportion distribution in validation data") + 
   scale_colour_manual(values = c("red4","darkorchid"),guide = F) + 
   theme(legend.key.size = unit(0,"cm")) +
-  ggsave(sprintf("figures/%s/mile-vice-proportion-correlations-morph-disease-detection-consensus.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-proportion-correlations-morph-disease-detection-consensus.pdf",output_str),
          width = 4,height = 2)
 
 comparison_df %>%
@@ -1481,7 +1481,7 @@ comparison_df %>%
   ylab("Proportion distribution in validation data") + 
   scale_colour_manual(values = c("red4","darkorchid"),guide = F) + 
   theme(legend.key.size = unit(0,"cm")) +
-  ggsave(sprintf("figures/%s/mile-vice-proportion-correlations-morph-bc-consensus.pdf",output_str),
+  ggsave(sprintf("figures/%s/mil-comori-proportion-correlations-morph-bc-consensus.pdf",output_str),
          width = 5,height = 2.5)
 
 
@@ -1503,7 +1503,7 @@ full_proportions_cell_type_mo %>%
   theme_pretty(base_size = 6) +
   xlab("") + 
   ylab("CM proportion") + 
-  ggsave(sprintf("figures/%s/mile-vice-consensus-vs-other.pdf",output_str),height = 1.3,width = 3)
+  ggsave(sprintf("figures/%s/mil-comori-consensus-vs-other.pdf",output_str),height = 1.3,width = 3)
 
 full_proportions_cell_type_mo %>% 
   mutate(mc = ifelse(is_consensual,vct_conversion(virtual_cell_type,cell_type),"Uncertain CM")) %>% 
@@ -1531,4 +1531,4 @@ full_proportions_cell_type_mo %>%
   ylab("") +
   scale_fill_aaas(name = NULL) +
   guides(fill = guide_legend(nrow = 2)) +
-  ggsave(sprintf("figures/%s/mile-vice-consensus-vs-other-bar.pdf",output_str),height = 1.5,width = 3)
+  ggsave(sprintf("figures/%s/mil-comori-consensus-vs-other-bar.pdf",output_str),height = 1.5,width = 3)
