@@ -19,15 +19,6 @@ from tensorflow.python.framework.errors_impl import InvalidArgumentError
 
 import tensorflow as tf
 
-# prevents greedy memory allocation
-gpus = tf.config.experimental.list_physical_devices('GPU')
-if gpus:
-  try:
-    for gpu in gpus:
-      tf.config.experimental.set_memory_growth(gpu, True)
-  except RuntimeError as e:
-    print(e)
-
 from image_generator import ImageGeneratorWithQueue
 from unet_utilities import *
 import MIA
@@ -99,6 +90,8 @@ class WBCProcess(BCProcess):
 
                     self.N_cells += 1
                     self.F.flush()
+                    
+                    yield image,mask,cnt
 
 class RBCProcess(BCProcess):
     def process_element(self,element):
@@ -136,6 +129,8 @@ class RBCProcess(BCProcess):
                         "cnt",cnt.shape,dtype=np.int32,data=cnt)    
                     self.N_cells += 1
                     self.F.flush()
+
+                    yield image,mask,cnt,str(C)
 
 class ProcessingQueue:
     def __init__(self,fn):
@@ -322,6 +317,15 @@ if __name__ == "__main__":
                         help='Factor to resize cells (due to different mpp).')
 
     args = parser.parse_args()
+
+    # prevents greedy memory allocation
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+    try:
+        for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
 
     h,w,extra = 512,512,128
     new_h,new_w = h+extra,w+extra

@@ -198,7 +198,7 @@ rule annotate_wbc:
         name="wbc"
     shell:
         """
-        python3 scripts/python/cells-to-annotations.py \
+        python3 scripts/python/cells_to_annotations.py \
             --segmented_cells_path {input.seg_wbc} \
             --characterized_cells_path {input.agg_wbc} \
             --name {params.name} \
@@ -225,7 +225,7 @@ rule annotate_rbc:
         name="rbc"
     shell:
         """
-        python3 scripts/python/cells-to-annotations.py \
+        python3 scripts/python/cells_to_annotations.py \
             --segmented_cells_path {input.seg_rbc} \
             --characterized_cells_path {input.agg_rbc} \
             --name {params.name} \
