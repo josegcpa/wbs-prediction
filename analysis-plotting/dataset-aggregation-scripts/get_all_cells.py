@@ -11,13 +11,16 @@ try:
 except:
     pass
 
+# path to the folder containing different Haemorasis outputs
+root_path = "/nfs/research/gerstung/josegcpa/data/SLIDES"
+
 dataset_folders = [
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/MLL_TIFF/_aggregates_wbc',
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/MLL_TIFF/_aggregates_rbc',
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_NDPI/_aggregates_wbc',
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_NDPI/_aggregates_rbc',
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_SVS_results/_aggregates_wbc',
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_SVS_results/_aggregates_rbc']
+    '{}/{}/_aggregates_wbc'.format(root_path,'MLL_TIFF'),
+    '{}/{}/_aggregates_rbc'.format(root_path,'MLL_TIFF'),
+    '{}/{}/_aggregates_wbc'.format(root_path,'ADDEN_NDPI'),
+    '{}/{}/_aggregates_rbc'.format(root_path,'ADDEN_NDPI'),
+    '{}/{}/_aggregates_wbc'.format(root_path,'ADDEN_SVS_results'),
+    '{}/{}/_aggregates_rbc'.format(root_path,'ADDEN_SVS_results')]
 
 dataset_output_root = [
     'datasets/wbc',

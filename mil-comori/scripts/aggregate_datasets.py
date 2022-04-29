@@ -33,7 +33,6 @@ def generate_min_max(input_path):
             cells = x['cells']
             for C in cells:
                 y = x['cells'][C][::]
-                # avoid numerical imprecision issues on the long run
                 m.append(y.min(axis=0))
                 M.append(y.max(axis=0))
         except:
@@ -128,13 +127,16 @@ wbc_feature_subset_unbiased = get_feature_subset(
 rbc_feature_subset_unbiased = get_feature_subset(
     "scripts/rbc_feature_subset_unbiased")
 
+# path to the folder containing different Haemorasis outputs
+root_path = "/nfs/research/gerstung/josegcpa/data/SLIDES"
+
 dataset_folders = [
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/MLL_TIFF/_aggregates_wbc',
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/MLL_TIFF/_aggregates_rbc',
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_NDPI/_aggregates_wbc',
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_NDPI/_aggregates_rbc',
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_SVS_results/_aggregates_wbc',
-    '/nfs/research/gerstung/josegcpa/data/SLIDES/ADDEN_SVS_results/_aggregates_rbc']
+    '{}/{}/_aggregates_wbc'.format(root_path,'MLL_TIFF'),
+    '{}/{}/_aggregates_rbc'.format(root_path,'MLL_TIFF'),
+    '{}/{}/_aggregates_wbc'.format(root_path,'ADDEN_NDPI'),
+    '{}/{}/_aggregates_rbc'.format(root_path,'ADDEN_NDPI'),
+    '{}/{}/_aggregates_wbc'.format(root_path,'ADDEN_SVS_results'),
+    '{}/{}/_aggregates_rbc'.format(root_path,'ADDEN_SVS_results')]
 
 dataset_output_root = [
     'datasets/wbc',

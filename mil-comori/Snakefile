@@ -7,7 +7,6 @@ NVC = [10,25,50]
 NVC_MO = [25,50]
 all_class_n = [2,2,2,2]
 all_label_files = ["anemia_binary","binary","mds_binary","disease_binary"]
-labels_multi_class = "multiclass"
 
 CV=config["cv_string"]
 WBC_DATASET=config["wbc_dataset"]
@@ -24,7 +23,7 @@ if "dropout" in config:
 with open("excluded_ids") as o:
     excluded_ids = o.read().strip()
 
-localrules: aggregate_metrics, aggregate_probabilities, aggregate_probabilities_mc, get_best_models, get_final_layers, get_final_layers_mo, get_vcq_layers, get_vcq_layers_mo
+localrules: aggregate_metrics, aggregate_probabilities, get_best_models, get_final_layers, get_final_layers_mo, get_vcq_layers, get_vcq_layers_mo
 
 rule all:
     input:
@@ -34,11 +33,8 @@ rule all:
             dataset=all_label_files,nvc=NVC),
         expand("models/"+CV+".multi_objective.{nvc}",nvc=NVC_MO),
         expand("models/"+CV+".multi_objective.{nvc}.bc",nvc=NVC_MO),
-        expand("models/"+CV+".multi_class.{nvc}",nvc=NVC_MO),
-        expand("models/"+CV+".multi_class.{nvc}.bc",nvc=NVC_MO),
         "metrics/"+CV+"_metrics_df.csv",
         "metrics/"+CV+"_probs.csv",
-        "metrics/"+CV+"_probs_mc.csv",
         "best_models/best_models_" + TYPE,
         "best_models/best_models_mo_" + TYPE,
         "best_models/best_layers_" + TYPE,
@@ -54,8 +50,6 @@ rule get_vcq_layers:
             dataset=all_label_files,nvc=NVC),
         expand("models/"+CV+".multi_objective.{nvc}",nvc=NVC_MO),
         expand("models/"+CV+".multi_objective.{nvc}.bc",nvc=NVC_MO),
-        expand("models/"+CV+".multi_class.{nvc}",nvc=NVC_MO),
-        expand("models/"+CV+".multi_class.{nvc}.bc",nvc=NVC_MO),
         best_model_file="best_models/best_models_" + TYPE
 
     output:
@@ -79,8 +73,6 @@ rule get_vcq_layers_mo:
             dataset=all_label_files,nvc=NVC),
         expand("models/"+CV+".multi_objective.{nvc}",nvc=NVC_MO),
         expand("models/"+CV+".multi_objective.{nvc}.bc",nvc=NVC_MO),
-        expand("models/"+CV+".multi_class.{nvc}",nvc=NVC_MO),
-        expand("models/"+CV+".multi_class.{nvc}.bc",nvc=NVC_MO),
         best_model_file="best_models/best_models_mo_" + TYPE,
     
     output:
@@ -104,8 +96,6 @@ rule get_final_layers:
             dataset=all_label_files,nvc=NVC),
         expand("models/"+CV+".multi_objective.{nvc}",nvc=NVC_MO),
         expand("models/"+CV+".multi_objective.{nvc}.bc",nvc=NVC_MO),
-        expand("models/"+CV+".multi_class.{nvc}",nvc=NVC_MO),
-        expand("models/"+CV+".multi_class.{nvc}.bc",nvc=NVC_MO),
         best_model_file="best_models/best_models_" + TYPE
     
     output:
@@ -129,8 +119,6 @@ rule get_final_layers_mo:
             dataset=all_label_files,nvc=NVC),
         expand("models/"+CV+".multi_objective.{nvc}",nvc=NVC_MO),
         expand("models/"+CV+".multi_objective.{nvc}.bc",nvc=NVC_MO),
-        expand("models/"+CV+".multi_class.{nvc}",nvc=NVC_MO),
-        expand("models/"+CV+".multi_class.{nvc}.bc",nvc=NVC_MO),
         best_model_file="best_models/best_models_mo_" + TYPE,
     
     output:
@@ -171,9 +159,7 @@ rule aggregate_metrics:
         expand("logs/"+CV+"_{dataset}.0.001.{nvc}.bc",
             dataset=all_label_files,nvc=NVC),
         expand("logs/"+CV+"_multi_objective.0.001.{nvc}",nvc=NVC_MO),
-        expand("logs/"+CV+"_multi_objective.0.001.{nvc}.bc",nvc=NVC_MO),
-        expand("logs/"+CV+"_multi_class.0.001.{nvc}",nvc=NVC_MO),
-        expand("logs/"+CV+"_multi_class.0.001.{nvc}.bc",nvc=NVC_MO)        
+        expand("logs/"+CV+"_multi_objective.0.001.{nvc}.bc",nvc=NVC_MO)
     
     output:
         "metrics/"+CV+"_metrics_df.csv"
@@ -204,22 +190,6 @@ rule aggregate_probabilities:
     shell:
         """
         python3 scripts/collect_probs_class.py --log_files {input} {params.subset_flag} > {output}
-        """
-
-rule aggregate_probabilities_mc:
-    input:
-        expand("logs/"+CV+"_multi_class.0.001.{nvc}",nvc=NVC_MO),
-        expand("logs/"+CV+"_multi_class.0.001.{nvc}.bc",nvc=NVC_MO)        
-    
-    output:
-        "metrics/"+CV+"_probs_mc.csv"
-
-    params:
-        subset_flag=subset_flag
-    
-    shell:
-        """
-        python3 scripts/collect_probs_class.py --log_files {input} {params.subset_flag} --multiclass > {output}
         """
 
 rule train_cells_bc:
@@ -393,92 +363,6 @@ rule train_cells_multi_objective:
             --labels_path {input.LABELS_1} \
             --labels_path {input.LABELS_2} \
             --labels_path {input.LABELS_3} \
-            --number_of_steps {params.nsteps} \
-            --batch_size 32 \
-            --number_of_cells {params.n_cells} \
-            --learning_rate {params.lr} \
-            --n_folds {params.nfolds} \
-            --weight_decay {params.wd} \
-            --model_path {output.model} \
-            --excluded_ids {params.excluded_ids} \
-            --median_impute \
-            --min_cells 50 \
-            --dropout_rate {params.dropout} > {output.log}
-        """
-
-rule train_cells_multi_class_bc:
-    input:
-        RBC=RBC_DATASET,
-        WBC=WBC_DATASET,
-        BC="datasets/blood_counts_no_header.csv",
-        LABELS="labels/{}.csv".format(labels_multi_class)
-
-    params:
-        nvc="{nvc}",
-        excluded_ids=excluded_ids,
-        lr=lr,
-        nsteps=NSTEPS,
-        nfolds=NFOLDS,
-        wd=WD,
-        log_id=CV+"_multi_class.0.001.{nvc,[0-9]+}.bc",
-        n_cells=N_CELLS,
-        dropout=DROPOUT
-
-    output:
-        log="logs/"+CV+"_multi_class.0.001.{nvc,[0-9]+}.bc",
-        model="models/"+CV+".multi_class.{nvc,[0-9]+}.bc"
-
-    shell:
-        """
-        python3 scripts/train_stack.py \
-            --n_virtual_cells {params.nvc} \
-            --n_classes 5 \
-            --dataset_path {input.WBC} \
-            --dataset_path {input.RBC} \
-            --labels_path {input.LABELS} \
-            --number_of_steps {params.nsteps} \
-            --batch_size 32 \
-            --number_of_cells {params.n_cells} \
-            --learning_rate {params.lr} \
-            --n_folds {params.nfolds} \
-            --weight_decay {params.wd} \
-            --other_dataset_path {input.BC} \
-            --model_path {output.model} \
-            --excluded_ids {params.excluded_ids} \
-            --median_impute \
-            --min_cells 50 \
-            --dropout_rate {params.dropout} > {output.log}
-        """
-
-rule train_cells_multi_class:
-    input:
-        RBC=RBC_DATASET,
-        WBC=WBC_DATASET,
-        LABELS="labels/{}.csv".format(labels_multi_class)
-
-    params:
-        nvc="{nvc}",
-        excluded_ids=excluded_ids,
-        lr=lr,
-        nsteps=NSTEPS,
-        nfolds=NFOLDS,
-        wd=WD,
-        log_id=CV+"_multi_class.0.001.{nvc,[0-9]+}",
-        n_cells=N_CELLS,
-        dropout=DROPOUT
-
-    output:
-        log="logs/"+CV+"_multi_class.0.001.{nvc,[0-9]+}",
-        model="models/"+CV+".multi_class.{nvc,[0-9]+}"
-
-    shell:
-        """
-        python3 scripts/train_stack.py \
-            --n_virtual_cells {params.nvc} \
-            --n_classes 5 \
-            --dataset_path {input.WBC} \
-            --dataset_path {input.RBC} \
-            --labels_path {input.LABELS} \
             --number_of_steps {params.nsteps} \
             --batch_size 32 \
             --number_of_cells {params.n_cells} \
