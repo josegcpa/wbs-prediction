@@ -1,7 +1,7 @@
 import os
 from glob import glob
 
-for d in ["ev-scores","ev-scores-consensus","cell-comparisons"]:
+for d in ["ev-scores","ev-scores-consensus"]:
     try: os.makedirs(d)
     except: pass
 
@@ -74,11 +74,9 @@ for model_id in model_ids:
                 task = 'mo_' + label_path + bc
                 cell_comparison_matching[task].append([model_path,fold_idx,i])
 
-comparison_output = [os.path.join('cell-comparisons',x+'.csv') for x in cell_comparison_matching]
-
 rule all:
     input:
-        so_output,mo_output,comparison_output
+        so_output,mo_output
 
 rule test_so:
     input:
@@ -223,34 +221,6 @@ rule cv_mo_consensus:
             --model_path {input.model} \
             --labels_path {input.labels} {params.bc} --ob {params.layer} \
             --excluded_ids $(cat excluded_ids) \
-            --threshold {params.threshold} \
-            --n_cells_consensus {params.n_cells} > {output}
-        """
-
-rule compare_cells:
-    input:
-        dataset_1=lambda wcs: os.path.join('models',
-            cell_comparison_matching[wcs.task_str][0][0]),
-        dataset_2=lambda wcs: os.path.join('models',
-            cell_comparison_matching[wcs.task_str][1][0])
-    output:
-        'cell-comparisons/subset_{task_str}.csv'
-    params:
-        fold_1=lambda wcs: cell_comparison_matching[wcs.task_str][0][1],
-        fold_2=lambda wcs: cell_comparison_matching[wcs.task_str][1][1],
-        obj=lambda wcs: cell_comparison_matching[wcs.task_str][0][2],
-        threshold = values['threshold'],
-        n_cells = values['n_cells']
-
-    shell:
-        """
-        python3 scripts/compare_cells.py \
-            --dataset_path datasets/wbc_subset.h5 \
-            --dataset_path datasets/rbc_subset.h5 \
-            --model_path_1 {input.dataset_1} --fold_1 {params.fold_1} \
-            --model_path_2 {input.dataset_2} --fold_2 {params.fold_2} \
-            --ob {params.obj} \
-            --excluded_ids $(echo excluded_ids) \
             --threshold {params.threshold} \
             --n_cells_consensus {params.n_cells} > {output}
         """

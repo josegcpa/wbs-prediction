@@ -33,6 +33,10 @@ In each folder a short description is provided delineating the required packages
 
 It should be noted that, due to the high data volume required for this work, we have chose to make the necessary inputs and outputs for `mil-comori`, as well as the necessary inputs for `analysis-plotting`, available through a [Figshare project](https://figshare.com/projects/Computational_analysis_of_peripheral_blood_smears_detects_disease-associated_cytomorphologies/132443). Instructions detailing how and what to download are provided in README files available in each folder.
 
+## Running the entire analysis (morphotype analysis + analysis-plotting)
+
+1. 
+
 ## Running only the `analysis-plotting` scripts
 
 This requires only a few steps, particularly:
