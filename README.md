@@ -25,7 +25,7 @@ In each folder a short description is provided delineating the required packages
 
 ### Folder enumeration
 
-1. [`pipeline_tf2`](https://github.com/josegcpa/wbs-prediction/tree/main/pipeline_tf2) - contains Haemorasis, the pipeline for WBC and RBC detection and characterisation from WBS. Also available as a Docker container in [Docker hub](https://hub.docker.com/repository/docker/josegcpa/blood-cell-detection)
+1. [`pipeline_tf2`](https://github.com/josegcpa/wbs-prediction/tree/main/pipeline_tf2) - contains Haemorasis, the pipeline for WBC and RBC detection and characterisation from WBS. Also available as a Docker container in [Docker hub](https://hub.docker.com/repository/docker/josegcpa/blood-cell-detection). The content of this folder is identical to the code in a separate repository which was created for convenience: [Haemorasis](https://github.com/josegcpa/haemorasis)
 2. [`mil-comori`](https://github.com/josegcpa/wbs-prediction/tree/main/mil-comori) - contains the code to train and run Morphotype analysis on the output from [Haemorasis](https://github.com/josegcpa/haemorasis)
 3. [`analysis-plotting`](https://github.com/josegcpa/wbs-prediction/tree/main/analysis-plotting) - contains the code to analyse and plot the results from the previous processes
 
@@ -40,14 +40,8 @@ This was developed and tested using Python 3.6.8 and on 8GB RAM on CentOS Linux 
 1. Clone this Github repository to your local machine 
     * `git clone https://github.com/josegcpa/wbs-prediction.git`
 2. Download and unzip the necessary data from Figshare using the download script
-    * `sh download-and-unzip-data-full.sh`
-3. Enter the Morphotype analysis directory (`cd mil-comori`) and follow the instructions presented there in the README.md file
+    * `sh download-and-unzip-data.sh`
+    * `sh download-and-unzip-analysis-plotting-only.sh` if you wish to perform only step 4
+3. (optional for those wishing to perform the Morphotype analysis:) enter the Morphotype analysis directory (`cd mil-comori`) and follow the instructions presented there in the README.md file. 
+    * Please note that one of the steps, that of aggregating cells from the [Haemorasis](https://github.com/josegcpa/haemorasis) output and calculating cell proportions (using `mil-comori/Snakefile-cell-collections` which, in essence, uses the features for all cells accross all slides and calculates their respective morphotype classification, retrieves their images for later inspection and calculates the proportions of morphotypes in each PBS) has been occluded from these instructions as it requires massive amounts of compute power and storage. To ensure that the rest of these analyses still functions correctly, we have made the necessary output available together with the remaining downloads
 4. After having performed the analysis in step 3., enter the statistical analysis and figure generation folder (`cd analysis-plotting`) and follow the instructions presented there
-
-### Simplified instructions to run only the statistical analysis and figure generation scripts
-
-1. Clone this Github repository to your local machine 
-    * `git clone https://github.com/josegcpa/wbs-prediction.git`
-2. Download and unzip the necessary data from Figshare using the download script containing the necessary analysis data and the Morphotype analysis output
-    * `sh download-and-unzip-analysis-plotting-only.sh`
-3. Enter the statistical analysis and figure generation folder (`cd analysis-plotting`) and follow the instructions presented there
