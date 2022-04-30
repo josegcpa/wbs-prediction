@@ -29,4 +29,4 @@ P <- c("caret==6.0-83","cowplot==1.1.1","dendextend==1.15.2","dunn.test==1.3.5",
 
 ### Statistical analysis and figure generation
 
-To help simplify matters, we have setup a `Snakefile` pipeline that coordinates all the necessary steps to generate figures. To run it, please run the command `snakemake -c 1`, where the flag `-c` specifies the number of available cores (and concurrent processes). Running this step with a single available core takes approximately {} hours.
+To help simplify matters, we have setup a `Snakefile` pipeline that coordinates all the necessary steps to generate figures. To run it, please run the command `snakemake -c 1`, where the flag `-c` specifies the number of available cores (and concurrent processes). Running this step with a single available core takes approximately 50 minutes.

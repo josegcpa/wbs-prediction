@@ -1,4 +1,5 @@
 CONFIG_FILE=$1
+EXTRA_ARG=$2
 
 mkdir -p logs
 mkdir -p models
@@ -10,4 +11,4 @@ snakemake --latency-wait 30000 \
     -k \
     -p \
     --rerun-incomplete \
-    --configfile $CONFIG_FILE -c 1
+    --configfile $CONFIG_FILE -c 1 $EXTRA_ARG
