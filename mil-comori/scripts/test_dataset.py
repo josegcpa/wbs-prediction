@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--dataset_path',dest='dataset_path',action='append',
                         type=str,default=None,
-                        help="Dataset used for validation"))
+                        help="Dataset used for validation")
     parser.add_argument('--other_dataset_path',dest='other_dataset_path',
                         action='append',
                         type=str,default=[],
