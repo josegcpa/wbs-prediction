@@ -31,17 +31,23 @@ In each folder a short description is provided delineating the required packages
 
 ## Running the analyses 
 
-It should be noted that, due to the high data volume required for this work, we have chose to make the necessary inputs and outputs for `mil-comori`, as well as the necessary inputs for `analysis-plotting`, available through a [Figshare project](https://figshare.com/projects/Computational_analysis_of_peripheral_blood_smears_detects_disease-associated_cytomorphologies/132443). Instructions detailing how and what to download are provided in README files available in each folder.
+It should be noted that, due to the high data volume required for this work, we have chose to make the necessary inputs and outputs for `mil-comori`, as well as the necessary inputs for `analysis-plotting`, available through a [Figshare project](https://figshare.com/projects/Computational_analysis_of_peripheral_blood_smears_detects_disease-associated_cytomorphologies/132443). We provide simplified instructions on how to reproduce the results from the Morhpotype analysis and the downstream statistical analysis below. In any case, README files explaining how to run each analysis are contained in each folder.
 
-## Running the entire analysis (morphotype analysis + analysis-plotting)
+This was developed and tested using Python 3.6.8 and on 8GB RAM on CentOS Linux 8 (kernel: Linux 4.18.0-240.22.1.el8_3.x86_64), and for Haemorasis, the blood cell detection pipeline (`pipeline_tf2`), we used NVidia Quadro M6000 GPUs. Approximately 3GB of free disk space are required to run both the Morphotype analysis and the downstream statistical analysis of the results (if you want to run only the latter approximately only 200MB of disk space are required). We also recommend having at least 8GB of RAM and a CentOS-based machine, and using `conda` to manage packages as this greatly simplifies dependencies.
 
-1. 
+### Simplified instructions to run Morphotype analysis and analysis-plotting
 
-## Running only the `analysis-plotting` scripts
+1. Clone this Github repository to your local machine 
+    * `git clone https://github.com/josegcpa/wbs-prediction.git`
+2. Download and unzip the necessary data from Figshare using the download script
+    * `sh download-and-unzip-data-full.sh`
+3. Enter the Morphotype analysis directory (`cd mil-comori`) and follow the instructions presented there in the README.md file
+4. After having performed the analysis in step 3., enter the statistical analysis and figure generation folder (`cd analysis-plotting`) and follow the instructions presented there
 
-This requires only a few steps, particularly:
+### Simplified instructions to run only the statistical analysis and figure generation scripts
 
-1. Downloading and unzipping the Morphotype analysis output inside of the `mil-comori` folder ([download link](https://figshare.com/account/projects/132443/articles/19369391))
-2. Downloading and unzipping the `data` and `datasets` required for this analysis inside the `analysis-plotting` folder ([download-link](https://figshare.com/account/projects/132443/articles/19371008))
-
-Inside the `analysis-plotting` folder, a `Snakefile` is available that will execute all of the scripts and handle dependencies (provided all necessary packages are installed).
+1. Clone this Github repository to your local machine 
+    * `git clone https://github.com/josegcpa/wbs-prediction.git`
+2. Download and unzip the necessary data from Figshare using the download script containing the necessary analysis data and the Morphotype analysis output
+    * `sh download-and-unzip-analysis-plotting-only.sh`
+3. Enter the statistical analysis and figure generation folder (`cd analysis-plotting`) and follow the instructions presented there
