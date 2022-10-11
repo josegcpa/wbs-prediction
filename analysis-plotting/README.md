@@ -20,12 +20,12 @@ P <- c("caret==6.0-83","cowplot==1.1.1","dendextend==1.15.2","dunn.test==1.3.5",
 
 #### If you have run Morphotype analysis
 
-1. Download and unzip the data available in https://figshare.com/account/projects/132443/articles/19371008.
+1. Download and unzip the data available in https://doi.org/10.6084/m9.figshare.19371008.v1.
 
 #### If you have not run Morphotype analysis
 
-1. Download the data available in https://figshare.com/account/projects/132443/articles/19369391 and unzip to the folder called `mil-comori` in the main project folder (`../mil-comori`)
-2. Download and unzip the data available in https://figshare.com/account/projects/132443/articles/19371008.
+1. Download the data available in https://doi.org/10.6084/m9.figshare.19369391.v2 and unzip to the folder called `mil-comori` in the main project folder (`../mil-comori`)
+2. Download and unzip the data available in https://doi.org/10.6084/m9.figshare.19371008.v1.
 
 ### Statistical analysis and figure generation
 
