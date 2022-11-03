@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/392387291.svg)](https://zenodo.org/badge/latestdoi/392387291)
+
 # Code repository for "Computational analysis of peripheral blood smears detects disease-associated cytomorphologies"
 
 ## Motivation
