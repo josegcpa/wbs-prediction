@@ -4,7 +4,7 @@
 
 ## Motivation
 
-This is the repository for "Computational analysis of peripheral blood smears detects disease-associated cytomorphologies" ([available as a preprint on MedRxiv](https://www.medrxiv.org/content/10.1101/2022.04.19.22273757v1)). In this work, we use the whole blood slides of >300 individuals with myelodyplastic syndromes and anaemias and use them to develop a method that is capable of automatically detecting cells in whole blood slides, predicting a disease and retrieving examples of cells which are relevant for each classification.
+This is the repository for "Computational analysis of peripheral blood smears detects disease-associated cytomorphologies" ([available on Nature Communications]([https://www.medrxiv.org/content/10.1101/2022.04.19.22273757v1](https://www.nature.com/articles/s41467-023-39676-y))). In this work, we use the whole blood slides of >300 individuals with myelodyplastic syndromes and anaemias and use them to develop a method that is capable of automatically detecting cells in whole blood slides, predicting a disease and retrieving examples of cells which are relevant for each classification.
 
 ## Code map
 
