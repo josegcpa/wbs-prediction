@@ -1,5 +1,5 @@
 absl-py==0.10.0
-aiohttp==3.7.4.post0
+aiohttp==3.13.3
 albumentations==1.1.0
 appdirs==1.4.4
 async-timeout==3.0.1
